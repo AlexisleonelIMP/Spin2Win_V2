@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "965937832679",
+    "project_id": "spin2winv2",
+    "storage_bucket": "spin2winv2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:965937832679:android:66e124c57f653104383842",
+        "android_client_info": {
+          "package_name": "com.example.spin2win_v2"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "965937832679-io7k9ujd7ha1lhnkeohorcse7dd7uajq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.spin2win_v2",
+            "certificate_hash": "cb710f3e4f1e10efc3968e8447d65d819a0eb96d"
+          }
+        },
+        {
+          "client_id": "965937832679-1strqk04m4oljfkasj388rjsk99a5k5t.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBvIpD0--YPqI9EPgDaTysPPSrX8NmicCY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "965937832679-1strqk04m4oljfkasj388rjsk99a5k5t.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
