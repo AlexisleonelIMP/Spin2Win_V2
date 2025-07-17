@@ -117,50 +117,9 @@ class MainPage extends StatefulWidget {
 
   @override
   State<MainPage> createState() => _MainPageState();
-}
-
+ }
 class _MainPageState extends State<MainPage> {
   int _selectedIndex = 0;
-  int _userCoins = 0;
-  StreamSubscription<DocumentSnapshot>? _coinSubscription;
-
-  @override
-  void initState() {
-    super.initState();
-    _listenToUserCoins();
-  }
-
-  void _listenToUserCoins() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
-      _coinSubscription = userRef.snapshots().listen((snapshot) {
-        if (mounted) {
-          if (snapshot.exists) {
-            setState(() {
-              _userCoins = (snapshot.data()?['coins'] ?? 0) as int;
-            });
-          } else {
-            userRef.set({'coins': 0}, SetOptions(merge: true));
-          }
-        }
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _coinSubscription?.cancel();
-    super.dispose();
-  }
-  
-  List<Widget> _getWidgetOptions(int coins) {
-    return [
-      const HomePage(),
-      ExchangePage(userCoins: coins),
-      const HistoryPage(),
-    ];
-  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -170,81 +129,120 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
-    final widgetOptions = _getWidgetOptions(_userCoins);
+    final user = FirebaseAuth.instance.currentUser;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.casino_outlined,
-              color: Colors.amber.shade800,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Spin2Win',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.bold,
-                color: Colors.amber.shade900,
-                fontSize: 22,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.monetization_on,
-                  color: Colors.amber.shade800,
+    // Si por alguna razón no hay usuario, mostramos una pantalla de carga para evitar errores.
+    if (user == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    // El StreamBuilder escuchará los cambios en el documento del usuario en tiempo real.
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
+      builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
+        
+        // Mientras carga la información inicial, mostramos la UI base con un indicador de carga en el AppBar.
+        // Esto es mejor que una pantalla en blanco.
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Spin2Win'),
+              actions: const [
+                Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.0)),
                 ),
+              ]
+            ),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        // Si hay un error con la conexión a Firebase, lo mostramos.
+        if (snapshot.hasError) {
+          return Scaffold(body: Center(child: Text('Error: ${snapshot.error}')));
+        }
+        
+        // Obtenemos las monedas del snapshot. Si no existe el documento o el campo, el valor por defecto es 0.
+        final userCoins = (snapshot.data?.data() as Map<String, dynamic>?)?['coins'] ?? 0;
+
+        // Creamos la lista de widgets para la navegación, pasando las monedas actualizadas.
+        final List<Widget> widgetOptions = [
+          const HomePage(),
+          ExchangePage(userCoins: userCoins), // Ahora siempre tendrá el valor más reciente.
+          const HistoryPage(),
+        ];
+
+        // Construimos la interfaz completa con los datos actualizados del StreamBuilder.
+        return Scaffold(
+          appBar: AppBar(
+            title: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.casino_outlined, color: Colors.amber.shade800),
                 const SizedBox(width: 8),
                 Text(
-                  '$_userCoins',
-                  style: const TextStyle(
+                  'Spin2Win',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
                     fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: Colors.black87
+                    color: Colors.amber.shade900,
+                    fontSize: 22,
                   ),
                 ),
               ],
             ),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  children: [
+                    Icon(Icons.monetization_on, color: Colors.amber.shade800),
+                    const SizedBox(width: 8),
+                    Text(
+                      '$userCoins', // ¡Este texto se actualizará automáticamente!
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Colors.black87
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.logout),
+                onPressed: () async {
+                  await GoogleSignIn().signOut();
+                  await FirebaseAuth.instance.signOut();
+                },
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await GoogleSignIn().signOut();
-              await FirebaseAuth.instance.signOut();
-            },
+          body: Center(
+            child: widgetOptions.elementAt(_selectedIndex),
           ),
-        ],
-      ),
-      body: Center(
-        child: widgetOptions.elementAt(_selectedIndex),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.casino),
-            label: 'Jugar',
+          bottomNavigationBar: BottomNavigationBar(
+            items: const <BottomNavigationBarItem>[
+              BottomNavigationBarItem(
+                icon: Icon(Icons.casino),
+                label: 'Jugar',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.swap_horiz),
+                label: 'Canjear',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.history),
+                label: 'Historial',
+              ),
+            ],
+            currentIndex: _selectedIndex,
+            selectedItemColor: Theme.of(context).colorScheme.primary,
+            onTap: _onItemTapped,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.swap_horiz),
-            label: 'Canjear',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.history),
-            label: 'Historial',
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Theme.of(context).colorScheme.primary,
-        onTap: _onItemTapped,
-      ),
+        );
+      },
     );
   }
 }
