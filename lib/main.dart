@@ -4,114 +4,147 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 import 'dart:math';
-import 'dart:ui'; // Import explícito para asegurar la visibilidad de TextDirection
+import 'dart:ui';
 
-// Importa el archivo de opciones generado
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // --- LÍNEAS AGREGADAS PARA BLOQUEAR LA ORIENTACIÓN ---
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  // --- FIN DE LAS LÍNEAS AGREGADAS ---
 
-  // Inicializa Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const Spin2WinApp());
+
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => ThemeNotifier(),
+      child: const Spin2WinApp(),
+    ),
+  );
 }
 
-// --- Modelo para los Premios ---
+class ThemeNotifier extends ChangeNotifier {
+  ThemeMode _themeMode = ThemeMode.light;
+  ThemeMode get themeMode => _themeMode;
+
+  void toggleTheme() {
+    _themeMode =
+        _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    notifyListeners();
+  }
+}
+
 class PrizeItem {
   final String label;
-  final int value; // Cantidad de monedas
+  final int value;
   final Color color;
 
   PrizeItem({required this.label, required this.value, required this.color});
 }
 
-// =======================================================================
-// ===== 1. WIDGET PRINCIPAL DE LA APP Y TEMA =====
-
-
-
-
-
-
-
-// =======================================================================
 class Spin2WinApp extends StatelessWidget {
   const Spin2WinApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Spin2Win',
-      theme: ThemeData(
-        primarySwatch: Colors.amber,
-        fontFamily: 'Poppins',
-        scaffoldBackgroundColor: const Color(0xFFFDFBF3), // Color de fondo como en la imagen
-        colorScheme: ColorScheme.fromSwatch(
-          primarySwatch: Colors.amber,
-        ).copyWith(
-          secondary: const Color(0xFFF9693B), // Naranja del botón
-          surface: const Color(0xFFFFFFFF), // Blanco para las tarjetas
-          onSurface: Colors.black87,
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFFFFF8E1),
-          elevation: 1,
-          titleTextStyle: TextStyle(
+    return Consumer<ThemeNotifier>(
+      builder: (context, themeNotifier, child) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Spin2Win',
+          theme: ThemeData(
+            brightness: Brightness.light,
+            primarySwatch: Colors.amber,
             fontFamily: 'Poppins',
-            color: Colors.black87,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
+            scaffoldBackgroundColor: const Color(0xFFFDFBF3),
+            colorScheme: ColorScheme.fromSwatch(
+              primarySwatch: Colors.amber,
+              brightness: Brightness.light,
+            ).copyWith(
+              secondary: const Color(0xFFF9693B),
+              surface: const Color(0xFFFFFFFF),
+              onSurface: Colors.black87,
+            ),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Color(0xFFFFF8E1),
+              elevation: 1,
+              titleTextStyle: TextStyle(
+                fontFamily: 'Poppins',
+                color: Colors.black87,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+              ),
+              iconTheme: IconThemeData(color: Colors.black87),
+            ),
+            inputDecorationTheme: InputDecorationTheme(
+              filled: true,
+              fillColor: const Color(0xFFFDFBF3),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              prefixIconColor: Colors.grey.shade600,
+              hintStyle: TextStyle(color: Colors.grey.shade400),
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFF9693B),
+              ),
+            ),
           ),
-          iconTheme: IconThemeData(color: Colors.black87),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: const Color(0xFFFDFBF3),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
+          darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            primarySwatch: Colors.amber,
+            fontFamily: 'Poppins',
+            scaffoldBackgroundColor: const Color(0xFF121212),
+            colorScheme: ColorScheme.fromSwatch(
+              primarySwatch: Colors.amber,
+              brightness: Brightness.dark,
+            ).copyWith(
+              secondary: const Color(0xFFF9693B),
+              surface: const Color(0xFF1E1E1E),
+            ),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Color(0xFF1E1E1E),
+            ),
+            inputDecorationTheme: InputDecorationTheme(
+              filled: true,
+              fillColor: Colors.grey.shade800,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade700),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade700),
+              ),
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.amber.shade400,
+              ),
+            ),
           ),
-           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          prefixIconColor: Colors.grey.shade600,
-          hintStyle: TextStyle(color: Colors.grey.shade400), // Estilo para el hint text
-        ),
-        textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(
-            foregroundColor: const Color(0xFFF9693B), // Naranja para los enlaces
-          ),
-        ),
-      ),
-      home: const AuthWrapper(),
+          themeMode: themeNotifier.themeMode,
+          home: const AuthWrapper(),
+        );
+      },
     );
   }
 }
 
-// =======================================================================
-// ===== 2. MANEJO DE AUTENTICACIÓN (LOGIN/LOGOUT) =====
-
-
-
-
-
-
-
-// =======================================================================
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
@@ -121,7 +154,8 @@ class AuthWrapper extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
         }
         if (snapshot.hasData) {
           return const MainPage();
@@ -132,22 +166,13 @@ class AuthWrapper extends StatelessWidget {
   }
 }
 
-// =======================================================================
-// ===== 3. PÁGINA PRINCIPAL (CONTENEDOR DE JUEGO, CANJE, HISTORIAL) =====
-
-
-
-
-
-
-
-// =======================================================================
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
 
   @override
   State<MainPage> createState() => _MainPageState();
- }
+}
+
 class _MainPageState extends State<MainPage> {
   int _selectedIndex = 0;
 
@@ -157,53 +182,97 @@ class _MainPageState extends State<MainPage> {
     });
   }
 
+  // --- FUNCIÓN DE DIÁLOGO MODIFICADA ---
+  void _showProfileDialog(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return SimpleDialog(
+          title: const Text('Perfil y Opciones'),
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Sesión iniciada como:',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  Text(
+                    user?.email ?? 'No disponible',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ],
+              ),
+            ),
+            const Divider(),
+            StatefulBuilder(
+              builder: (context, setDialogState) {
+                return SwitchListTile(
+                  title: const Text('Modo Oscuro'),
+                  value: themeNotifier.themeMode == ThemeMode.dark,
+                  onChanged: (bool value) {
+                    themeNotifier.toggleTheme();
+                    setDialogState(() {});
+                  },
+                );
+              },
+            ),
+            // --- OPCIÓN DE LOGOUT AGREGADA AQUÍ ---
+            SimpleDialogOption(
+              onPressed: () async {
+                Navigator.of(context).pop(); // Cierra el diálogo primero
+                await GoogleSignIn().signOut();
+                await FirebaseAuth.instance.signOut();
+              },
+              child: const Text(
+                'Cerrar Sesión',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+  // --- FIN DE LA FUNCIÓN MODIFICADA ---
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
 
-    // Si por alguna razón no hay usuario, mostramos una pantalla de carga para evitar errores.
     if (user == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    // El StreamBuilder escuchará los cambios en el documento del usuario en tiempo real.
     return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
+      stream:
+          FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
       builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
-        
-        // Mientras carga la información inicial, mostramos la UI base con un indicador de carga en el AppBar.
-        // Esto es mejor que una pantalla en blanco.
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
-            appBar: AppBar(
-              title: const Text('Spin2Win'),
-              actions: const [
-                Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.0)),
-                ),
-              ]
-            ),
+            appBar: AppBar(title: const Text('Spin2Win')),
             body: const Center(child: CircularProgressIndicator()),
           );
         }
 
-        // Si hay un error con la conexión a Firebase, lo mostramos.
         if (snapshot.hasError) {
           return Scaffold(body: Center(child: Text('Error: ${snapshot.error}')));
         }
         
-        // Obtenemos las monedas del snapshot. Si no existe el documento o el campo, el valor por defecto es 0.
-        final userCoins = (snapshot.data?.data() as Map<String, dynamic>?)?['coins'] ?? 0;
+        final userCoins =
+            (snapshot.data?.data() as Map<String, dynamic>?)?['coins'] ?? 0;
 
-        // Creamos la lista de widgets para la navegación, pasando las monedas actualizadas.
         final List<Widget> widgetOptions = [
           const HomePage(),
-          ExchangePage(userCoins: userCoins), // Ahora siempre tendrá el valor más reciente.
+          ExchangePage(userCoins: userCoins),
           const HistoryPage(),
         ];
 
-        // Construimos la interfaz completa con los datos actualizados del StreamBuilder.
         return Scaffold(
           appBar: AppBar(
             title: Row(
@@ -211,13 +280,14 @@ class _MainPageState extends State<MainPage> {
               children: [
                 Icon(Icons.casino_outlined, color: Colors.amber.shade800),
                 const SizedBox(width: 8),
-                Text(
-                  'Spin2Win',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.bold,
-                    color: Colors.amber.shade900,
-                    fontSize: 22,
+                const Flexible(
+                  child: Text(
+                    'Spin2Win',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 22,
+                    ),
                   ),
                 ),
               ],
@@ -227,26 +297,26 @@ class _MainPageState extends State<MainPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Row(
                   children: [
-                    Icon(Icons.monetization_on, color: Colors.amber.shade800),
+                    Icon(Icons.monetization_on,
+                        color: Colors.amber.shade800),
                     const SizedBox(width: 8),
                     Text(
-                      '$userCoins', // ¡Este texto se actualizará automáticamente!
+                      '$userCoins',
                       style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: Colors.black87
+                          fontWeight: FontWeight.w600,
+                          fontSize: 18,
                       ),
                     ),
                   ],
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.logout),
-                onPressed: () async {
-                  await GoogleSignIn().signOut();
-                  await FirebaseAuth.instance.signOut();
+                icon: const Icon(Icons.account_circle_outlined),
+                onPressed: () {
+                  _showProfileDialog(context);
                 },
               ),
+              // --- EL BOTÓN DE LOGOUT DE AQUÍ FUE ELIMINADO ---
             ],
           ),
           body: Center(
@@ -277,16 +347,6 @@ class _MainPageState extends State<MainPage> {
   }
 }
 
-// =======================================================================
-// ===== 4. PÁGINA DE JUEGO (RULETA) =====
-
-
-
-
-
-
-
-// =======================================================================
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -296,7 +356,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final GlobalKey<FortuneWheelState> _wheelKey = GlobalKey();
-  
+
   final List<PrizeItem> _prizes = [
     PrizeItem(label: '10 Monedas', value: 10, color: Colors.blue.shade400),
     PrizeItem(label: '20 Monedas', value: 20, color: Colors.green.shade400),
@@ -310,7 +370,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _updateUserCoins(PrizeItem prize) async {
     if (prize.value == 0) {
-       if (mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('¡Mejor suerte la próxima vez!')),
         );
@@ -323,12 +383,12 @@ class _HomePageState extends State<HomePage> {
 
     final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
     final historyRef = userRef.collection('rouletteHistory').doc();
-    
+
     await FirebaseFirestore.instance.runTransaction((transaction) async {
       final snapshot = await transaction.get(userRef);
       final currentCoins = (snapshot.data()?['coins'] ?? 0) as int;
       final newCoins = currentCoins + prize.value;
-      
+
       transaction.set(userRef, {'coins': newCoins}, SetOptions(merge: true));
       transaction.set(historyRef, {
         'prize': prize.label,
@@ -355,7 +415,10 @@ class _HomePageState extends State<HomePage> {
           children: <Widget>[
             Text(
               '¡Gira para Ganar!',
-              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
+              style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary),
             ),
             const SizedBox(height: 32),
             SizedBox(
@@ -365,7 +428,7 @@ class _HomePageState extends State<HomePage> {
                 key: _wheelKey,
                 items: _prizes,
                 onSpinEnd: (prize) {
-                  _updateUserCoins(prize);
+                  _updateUserCoins(prize as PrizeItem);
                 },
               ),
             ),
@@ -379,8 +442,10 @@ class _HomePageState extends State<HomePage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.secondary,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15), 
-                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), 
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                textStyle: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -391,16 +456,18 @@ class _HomePageState extends State<HomePage> {
 }
 
 class FortuneWheel extends StatefulWidget {
-  final List<PrizeItem> items;
-  final Function(PrizeItem) onSpinEnd;
+  final List<dynamic> items;
+  final Function(dynamic) onSpinEnd;
 
-  const FortuneWheel({required this.items, required this.onSpinEnd, Key? key}) : super(key: key);
+  const FortuneWheel({required this.items, required this.onSpinEnd, Key? key})
+      : super(key: key);
 
   @override
   FortuneWheelState createState() => FortuneWheelState();
 }
 
-class FortuneWheelState extends State<FortuneWheel> with SingleTickerProviderStateMixin {
+class FortuneWheelState extends State<FortuneWheel>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
   final Random _random = Random();
@@ -414,9 +481,8 @@ class FortuneWheelState extends State<FortuneWheel> with SingleTickerProviderSta
       duration: const Duration(seconds: 6),
     );
 
-    _animation = Tween<double>(begin: 0, end: 0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.decelerate)
-    );
+    _animation = Tween<double>(begin: 0, end: 0)
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.decelerate));
   }
 
   void spin() {
@@ -426,15 +492,15 @@ class FortuneWheelState extends State<FortuneWheel> with SingleTickerProviderSta
     final double randomAngle = _random.nextDouble() * 2 * pi;
 
     final int randomFullSpins = 5 + _random.nextInt(5);
-    final double endAngle = _currentAngle - (randomFullSpins * 2 * pi) - randomAngle;
+    final double endAngle =
+        _currentAngle - (randomFullSpins * 2 * pi) - randomAngle;
 
     _animation = Tween<double>(begin: _currentAngle, end: endAngle).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutQuart)
-    );
+        CurvedAnimation(parent: _controller, curve: Curves.easeOutQuart));
 
     _controller.forward(from: 0.0).whenComplete(() {
       _currentAngle = endAngle;
-      
+
       double effectiveAngle = (-_currentAngle + (anglePerItem / 2));
       double normalizedAngle = effectiveAngle % (2 * pi);
       if (normalizedAngle < 0) {
@@ -468,7 +534,7 @@ class FortuneWheelState extends State<FortuneWheel> with SingleTickerProviderSta
           },
           child: CustomPaint(
             size: const Size.square(300),
-            painter: RoulettePainter(items: widget.items),
+            painter: RoulettePainter(items: widget.items.cast<PrizeItem>()),
           ),
         ),
         const RoulettePointer(),
@@ -495,7 +561,7 @@ class _PointerPainter extends CustomPainter {
     final paint = Paint()
       ..color = Colors.red.shade800
       ..style = PaintingStyle.fill;
-    
+
     final borderPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
@@ -506,7 +572,7 @@ class _PointerPainter extends CustomPainter {
     path.lineTo(0, 0);
     path.lineTo(size.width, 0);
     path.close();
-    
+
     canvas.drawPath(path, borderPaint);
     canvas.drawPath(path, paint);
   }
@@ -518,7 +584,7 @@ class _PointerPainter extends CustomPainter {
 class RoulettePainter extends CustomPainter {
   final List<PrizeItem> items;
   final Paint _paint = Paint();
-  
+
   RoulettePainter({required this.items});
 
   @override
@@ -537,17 +603,17 @@ class RoulettePainter extends CustomPainter {
         _paint,
       );
     }
-    
+
     _paint.color = Colors.white.withOpacity(0.5);
     _paint.strokeWidth = 2.0;
     for (int i = 0; i < items.length; i++) {
-        final lineAngle = -pi/2 - angle/2 + i*angle;
-        final startPoint = center;
-        final endPoint = Offset(
-            center.dx + radius * cos(lineAngle),
-            center.dy + radius * sin(lineAngle),
-        );
-        canvas.drawLine(startPoint, endPoint, _paint);
+      final lineAngle = -pi / 2 - angle / 2 + i * angle;
+      final startPoint = center;
+      final endPoint = Offset(
+        center.dx + radius * cos(lineAngle),
+        center.dy + radius * sin(lineAngle),
+      );
+      canvas.drawLine(startPoint, endPoint, _paint);
     }
 
     for (int i = 0; i < items.length; i++) {
@@ -564,13 +630,18 @@ class RoulettePainter extends CustomPainter {
 
       textPainter.text = TextSpan(
         text: items[i].label,
-        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.black26, blurRadius: 2)]),
+        style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            shadows: [Shadow(color: Colors.black26, blurRadius: 2)]),
       );
       textPainter.layout(minWidth: 0, maxWidth: radius * 0.8);
-      
-      final textOffset = Offset(radius * 0.55 - textPainter.width / 2, -textPainter.height / 2);
+
+      final textOffset =
+          Offset(radius * 0.55 - textPainter.width / 2, -textPainter.height / 2);
       textPainter.paint(canvas, textOffset);
-      
+
       canvas.restore();
     }
   }
@@ -579,15 +650,6 @@ class RoulettePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-// =======================================================================
-// ===== 5. PÁGINA DE CANJEAR =====
-
-
-
-
-
-
-// =======================================================================
 class ExchangePage extends StatefulWidget {
   final int userCoins;
   const ExchangePage({super.key, required this.userCoins});
@@ -633,13 +695,15 @@ class _ExchangePageState extends State<ExchangePage> {
     }
     if (coinsToWithdraw < _minimumWithdrawal) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('El retiro mínimo es de $_minimumWithdrawal monedas.')),
+        SnackBar(
+            content: Text('El retiro mínimo es de $_minimumWithdrawal monedas.')),
       );
       return;
     }
     if (coinsToWithdraw > widget.userCoins) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No tienes suficientes monedas para este retiro.')),
+        const SnackBar(
+            content: Text('No tienes suficientes monedas para este retiro.')),
       );
       return;
     }
@@ -649,7 +713,8 @@ class _ExchangePageState extends State<ExchangePage> {
 
     try {
       final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
-      final withdrawalRef = FirebaseFirestore.instance.collection('withdrawal_requests').doc();
+      final withdrawalRef =
+          FirebaseFirestore.instance.collection('withdrawal_requests').doc();
 
       await FirebaseFirestore.instance.runTransaction((transaction) async {
         final userSnapshot = await transaction.get(userRef);
@@ -673,18 +738,18 @@ class _ExchangePageState extends State<ExchangePage> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('¡Solicitud de retiro enviada con éxito!')),
+        const SnackBar(
+            content: Text('¡Solicitud de retiro enviada con éxito!')),
       );
       _nameController.clear();
       _aliasController.clear();
       _coinsController.clear();
-
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error al enviar la solicitud: $e')),
       );
     } finally {
-      if(mounted) {
+      if (mounted) {
         setState(() => _isLoading = false);
       }
     }
@@ -712,7 +777,8 @@ class _ExchangePageState extends State<ExchangePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Icon(Icons.account_balance_wallet_outlined, size: 48, color: theme.colorScheme.primary),
+              Icon(Icons.account_balance_wallet_outlined,
+                  size: 48, color: theme.colorScheme.primary),
               const SizedBox(height: 16),
               const Text(
                 'Solicitar Retiro',
@@ -731,7 +797,7 @@ class _ExchangePageState extends State<ExchangePage> {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  Expanded(
+                  Expanded( // <-- CORRECCIÓN 'const'
                     child: _InfoCard(
                       title: 'Total Retirado',
                       value: '\$0.00',
@@ -770,22 +836,22 @@ class _ExchangePageState extends State<ExchangePage> {
               ),
               const SizedBox(height: 16),
               _buildTextField(
-                controller: _coinsController,
-                label: 'Monedas a Retirar',
-                hint: 'ej: 10000',
-                keyboardType: TextInputType.number,
-                suffixIcon: TextButton(
-                  onPressed: () {
-                    _coinsController.text = widget.userCoins.toString();
-                  },
-                  child: const Text('Max'),
-                )
-              ),
+                  controller: _coinsController,
+                  label: 'Monedas a Retirar',
+                  hint: 'ej: 10000',
+                  keyboardType: TextInputType.number,
+                  suffixIcon: TextButton(
+                    onPressed: () {
+                      _coinsController.text = widget.userCoins.toString();
+                    },
+                    child: const Text('Max'),
+                  )),
               const SizedBox(height: 24),
               Text(
                 'Recibirás (aprox.): \$${_amountToReceive.toStringAsFixed(2)}',
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
               if (_isLoading)
@@ -799,7 +865,8 @@ class _ExchangePageState extends State<ExchangePage> {
                     backgroundColor: theme.colorScheme.secondary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    textStyle: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
             ],
@@ -868,7 +935,8 @@ class _InfoCard extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 value,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
               ),
             ],
           ),
@@ -878,15 +946,6 @@ class _InfoCard extends StatelessWidget {
   }
 }
 
-// =======================================================================
-// ===== 6. PÁGINA DE HISTORIAL =====
-
-
-
-
-
-
-// =======================================================================
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
 
@@ -894,7 +953,8 @@ class HistoryPage extends StatefulWidget {
   State<HistoryPage> createState() => _HistoryPageState();
 }
 
-class _HistoryPageState extends State<HistoryPage> with SingleTickerProviderStateMixin {
+class _HistoryPageState extends State<HistoryPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -922,7 +982,8 @@ class _HistoryPageState extends State<HistoryPage> with SingleTickerProviderStat
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              Icon(Icons.history_edu_outlined, size: 48, color: theme.colorScheme.primary),
+              Icon(Icons.history_edu_outlined,
+                  size: 48, color: theme.colorScheme.primary),
               const SizedBox(height: 16),
               const Text(
                 'Tu Historial',
@@ -935,8 +996,12 @@ class _HistoryPageState extends State<HistoryPage> with SingleTickerProviderStat
                 unselectedLabelColor: Colors.grey.shade600,
                 indicatorColor: theme.colorScheme.secondary,
                 tabs: const [
-                  Tab(icon: Icon(Icons.casino_outlined), text: 'Historial de Giros'),
-                  Tab(icon: Icon(Icons.history_toggle_off), text: 'Historial de Retiros'),
+                  Tab(
+                      icon: Icon(Icons.casino_outlined),
+                      text: 'Historial de Giros'),
+                  Tab(
+                      icon: Icon(Icons.history_toggle_off),
+                      text: 'Historial de Retiros'),
                 ],
               ),
               const SizedBox(height: 16),
@@ -963,7 +1028,9 @@ class SpinHistoryView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return const Center(child: Text("Inicia sesión para ver tu historial."));
+    if (user == null) {
+      return const Center(child: Text("Inicia sesión para ver tu historial."));
+    }
 
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -991,7 +1058,6 @@ class SpinHistoryView extends StatelessWidget {
           itemBuilder: (context, index) {
             final data = docs[index].data() as Map<String, dynamic>;
             final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
-            // Formato de fecha simple sin el paquete intl
             final dateString = timestamp != null
                 ? "${timestamp.toLocal().day.toString().padLeft(2, '0')}/${timestamp.toLocal().month.toString().padLeft(2, '0')}/${timestamp.toLocal().year} ${timestamp.toLocal().hour.toString().padLeft(2, '0')}:${timestamp.toLocal().minute.toString().padLeft(2, '0')}"
                 : 'Fecha no disponible';
@@ -1018,7 +1084,9 @@ class WithdrawalHistoryView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return const Center(child: Text("Inicia sesión para ver tu historial."));
+    if (user == null) {
+      return const Center(child: Text("Inicia sesión para ver tu historial."));
+    }
 
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -1045,15 +1113,14 @@ class WithdrawalHistoryView extends StatelessWidget {
           itemBuilder: (context, index) {
             final data = docs[index].data() as Map<String, dynamic>;
             final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
-            // Formato de fecha simple sin el paquete intl
             final dateString = timestamp != null
                 ? "${timestamp.toLocal().day.toString().padLeft(2, '0')}/${timestamp.toLocal().month.toString().padLeft(2, '0')}/${timestamp.toLocal().year}"
                 : 'N/A';
             final status = data['status'] ?? 'desconocido';
-            
+
             IconData statusIcon;
             Color statusColor;
-            switch(status) {
+            switch (status) {
               case 'pending':
                 statusIcon = Icons.hourglass_empty;
                 statusColor = Colors.orange;
@@ -1072,11 +1139,12 @@ class WithdrawalHistoryView extends StatelessWidget {
             }
 
             return Card(
-               margin: const EdgeInsets.symmetric(vertical: 4),
+              margin: const EdgeInsets.symmetric(vertical: 4),
               child: ListTile(
                 leading: Icon(statusIcon, color: statusColor),
                 title: Text('Retiro de ${data['coinsToWithdraw']} monedas'),
-                subtitle: Text('Monto: \$${(data['amountInPesos'] as num).toStringAsFixed(2)} - Estado: $status'),
+                subtitle: Text(
+                    'Monto: \$${(data['amountInPesos'] as num).toStringAsFixed(2)} - Estado: $status'),
                 trailing: Text(dateString),
               ),
             );
@@ -1087,14 +1155,6 @@ class WithdrawalHistoryView extends StatelessWidget {
   }
 }
 
-// =======================================================================
-// ===== 7. PÁGINA DE LOGIN (CORREGIDA) =====
-
-
-
-
-
-// =======================================================================
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -1137,23 +1197,17 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // --- FUNCIÓN MODIFICADA ---
   Future<void> _signInWithEmail() async {
-    // PASO 1: VALIDACIÓN DE CAMPOS
-    // Verificamos si alguno de los campos de texto está vacío.
     if (_emailController.text.trim().isEmpty ||
         _passwordController.text.trim().isEmpty) {
-      // Si están vacíos, mostramos un mensaje amigable al usuario.
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Por favor, completa tu correo y contraseña.'),
           backgroundColor: Colors.red,
         ),
       );
-      // Salimos de la función para no intentar el inicio de sesión.
       return;
     }
-    // FIN DE LA VALIDACIÓN
 
     setState(() => _isLoading = true);
     try {
@@ -1163,7 +1217,6 @@ class _LoginPageState extends State<LoginPage> {
       );
     } on FirebaseAuthException catch (e) {
       if (mounted) {
-        // MEJORA: Mensaje de error más específico y amigable para el usuario.
         String errorMessage = 'Ocurrió un error. Intenta de nuevo.';
         if (e.code == 'user-not-found' ||
             e.code == 'wrong-password' ||
@@ -1183,12 +1236,12 @@ class _LoginPageState extends State<LoginPage> {
       }
     }
   }
-  // --- FIN DE LA FUNCIÓN MODIFICADA ---
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: const Color(0xFFFDFBF3),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -1290,8 +1343,9 @@ class _LoginPageState extends State<LoginPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('¿No tienes una cuenta?',
-                            style: TextStyle(color: Colors.grey.shade600)),
+                        Flexible( // <-- ARREGLO DE OVERFLOW
+                          child: Text('¿No tienes una cuenta?', style: TextStyle(color: Colors.grey.shade600)),
+                        ),
                         TextButton(
                           onPressed: () {
                             Navigator.of(context).push(MaterialPageRoute(
@@ -1338,15 +1392,6 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-// =======================================================================
-// ===== 8. PÁGINA DE REGISTRO (CORREGIDA) =====
-
-
-
-
-
-
-// =======================================================================
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -1361,8 +1406,6 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _isLoading = false;
 
   Future<void> _registerUser() async {
-    // --- VALIDACIÓN AÑADIDA ---
-    // Verificamos si alguno de los campos está vacío.
     if (_emailController.text.trim().isEmpty ||
         _passwordController.text.trim().isEmpty ||
         _confirmPasswordController.text.trim().isEmpty) {
@@ -1372,9 +1415,8 @@ class _RegisterPageState extends State<RegisterPage> {
           backgroundColor: Colors.red,
         ),
       );
-      return; // Salimos de la función si hay campos vacíos.
+      return;
     }
-    // --- FIN DE LA VALIDACIÓN ---
 
     if (_passwordController.text.trim() !=
         _confirmPasswordController.text.trim()) {
@@ -1391,7 +1433,6 @@ class _RegisterPageState extends State<RegisterPage> {
         password: _passwordController.text.trim(),
       );
 
-      // Crear documento de usuario en Firestore
       await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user!.uid)
@@ -1402,7 +1443,7 @@ class _RegisterPageState extends State<RegisterPage> {
       });
 
       if (mounted) {
-        Navigator.of(context).pop(); // Volver a la página de login
+        Navigator.of(context).pop();
       }
     } on FirebaseAuthException catch (e) {
       if (mounted) {
@@ -1419,7 +1460,6 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -1441,7 +1481,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.primary,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -1484,7 +1524,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         onPressed: _registerUser,
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          backgroundColor: theme.colorScheme.secondary,
+                          backgroundColor: Theme.of(context).colorScheme.secondary,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
