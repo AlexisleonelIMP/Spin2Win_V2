@@ -30,6 +30,13 @@ class PrizeItem {
 
 // =======================================================================
 // ===== 1. WIDGET PRINCIPAL DE LA APP Y TEMA =====
+
+
+
+
+
+
+
 // =======================================================================
 class Spin2WinApp extends StatelessWidget {
   const Spin2WinApp({super.key});
@@ -88,6 +95,13 @@ class Spin2WinApp extends StatelessWidget {
 
 // =======================================================================
 // ===== 2. MANEJO DE AUTENTICACIÓN (LOGIN/LOGOUT) =====
+
+
+
+
+
+
+
 // =======================================================================
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
@@ -111,6 +125,13 @@ class AuthWrapper extends StatelessWidget {
 
 // =======================================================================
 // ===== 3. PÁGINA PRINCIPAL (CONTENEDOR DE JUEGO, CANJE, HISTORIAL) =====
+
+
+
+
+
+
+
 // =======================================================================
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -249,6 +270,13 @@ class _MainPageState extends State<MainPage> {
 
 // =======================================================================
 // ===== 4. PÁGINA DE JUEGO (RULETA) =====
+
+
+
+
+
+
+
 // =======================================================================
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -544,6 +572,12 @@ class RoulettePainter extends CustomPainter {
 
 // =======================================================================
 // ===== 5. PÁGINA DE CANJEAR =====
+
+
+
+
+
+
 // =======================================================================
 class ExchangePage extends StatefulWidget {
   final int userCoins;
@@ -837,6 +871,12 @@ class _InfoCard extends StatelessWidget {
 
 // =======================================================================
 // ===== 6. PÁGINA DE HISTORIAL =====
+
+
+
+
+
+
 // =======================================================================
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -1039,7 +1079,12 @@ class WithdrawalHistoryView extends StatelessWidget {
 }
 
 // =======================================================================
-// ===== 7. PÁGINA DE LOGIN =====
+// ===== 7. PÁGINA DE LOGIN (CORREGIDA) =====
+
+
+
+
+
 // =======================================================================
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -1058,32 +1103,49 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
       if (googleUser == null) {
-        if(mounted) setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
         return;
       }
-      
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final OAuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
       await FirebaseAuth.instance.signInWithCredential(credential);
-
     } catch (e) {
-      if(mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error al iniciar sesión con Google: $e')),
         );
       }
     } finally {
-      if(mounted) {
+      if (mounted) {
         setState(() => _isLoading = false);
       }
     }
   }
 
+  // --- FUNCIÓN MODIFICADA ---
   Future<void> _signInWithEmail() async {
+    // PASO 1: VALIDACIÓN DE CAMPOS
+    // Verificamos si alguno de los campos de texto está vacío.
+    if (_emailController.text.trim().isEmpty ||
+        _passwordController.text.trim().isEmpty) {
+      // Si están vacíos, mostramos un mensaje amigable al usuario.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor, completa tu correo y contraseña.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      // Salimos de la función para no intentar el inicio de sesión.
+      return;
+    }
+    // FIN DE LA VALIDACIÓN
+
     setState(() => _isLoading = true);
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -1091,17 +1153,28 @@ class _LoginPageState extends State<LoginPage> {
         password: _passwordController.text.trim(),
       );
     } on FirebaseAuthException catch (e) {
-        if(mounted) {
+      if (mounted) {
+        // MEJORA: Mensaje de error más específico y amigable para el usuario.
+        String errorMessage = 'Ocurrió un error. Intenta de nuevo.';
+        if (e.code == 'user-not-found' ||
+            e.code == 'wrong-password' ||
+            e.code == 'invalid-credential') {
+          errorMessage = 'Correo o contraseña incorrectos.';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.message}')),
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
-        if(mounted) {
+      if (mounted) {
         setState(() => _isLoading = false);
       }
     }
   }
+  // --- FIN DE LA FUNCIÓN MODIFICADA ---
 
   @override
   Widget build(BuildContext context) {
@@ -1113,7 +1186,8 @@ class _LoginPageState extends State<LoginPage> {
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: Card(
               elevation: 5,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
@@ -1163,38 +1237,43 @@ class _LoginPageState extends State<LoginPage> {
                             label: const Text('Iniciar Sesión'),
                             onPressed: _signInWithEmail,
                             style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: theme.colorScheme.secondary,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)
-                              )
-                            ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                backgroundColor: theme.colorScheme.secondary,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12))),
                           ),
                           const SizedBox(height: 24),
                           Row(
                             children: [
-                              Expanded(child: Divider(color: Colors.grey.shade300)),
+                              Expanded(
+                                  child: Divider(color: Colors.grey.shade300)),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                                child: Text('O CONTINÚA CON', style: TextStyle(color: Colors.grey.shade500)),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8.0),
+                                child: Text('O CONTINÚA CON',
+                                    style:
+                                        TextStyle(color: Colors.grey.shade500)),
                               ),
-                              Expanded(child: Divider(color: Colors.grey.shade300)),
+                              Expanded(
+                                  child: Divider(color: Colors.grey.shade300)),
                             ],
                           ),
                           const SizedBox(height: 24),
                           OutlinedButton.icon(
-                            icon: Image.network('https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1024px-Google_%22G%22_logo.svg.png', height: 18.0),
+                            icon: Image.network(
+                                'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1024px-Google_%22G%22_logo.svg.png',
+                                height: 18.0),
                             label: const Text('Iniciar sesión con Google'),
                             onPressed: _signInWithGoogle,
                             style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              side: BorderSide(color: Colors.grey.shade300),
-                              foregroundColor: Colors.black87,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)
-                              )
-                            ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                side: BorderSide(color: Colors.grey.shade300),
+                                foregroundColor: Colors.black87,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12))),
                           ),
                         ],
                       ),
@@ -1202,10 +1281,12 @@ class _LoginPageState extends State<LoginPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('¿No tienes una cuenta?', style: TextStyle(color: Colors.grey.shade600)),
+                        Text('¿No tienes una cuenta?',
+                            style: TextStyle(color: Colors.grey.shade600)),
                         TextButton(
                           onPressed: () {
-                            Navigator.of(context).push(MaterialPageRoute(builder: (context) => const RegisterPage()));
+                            Navigator.of(context).push(MaterialPageRoute(
+                                builder: (context) => const RegisterPage()));
                           },
                           child: const Text('Regístrate'),
                         ),
@@ -1249,7 +1330,13 @@ class _LoginPageState extends State<LoginPage> {
 }
 
 // =======================================================================
-// ===== 8. PÁGINA DE REGISTRO =====
+// ===== 8. PÁGINA DE REGISTRO (CORREGIDA) =====
+
+
+
+
+
+
 // =======================================================================
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -1265,7 +1352,23 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _isLoading = false;
 
   Future<void> _registerUser() async {
-    if (_passwordController.text.trim() != _confirmPasswordController.text.trim()) {
+    // --- VALIDACIÓN AÑADIDA ---
+    // Verificamos si alguno de los campos está vacío.
+    if (_emailController.text.trim().isEmpty ||
+        _passwordController.text.trim().isEmpty ||
+        _confirmPasswordController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor, completa todos los campos.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return; // Salimos de la función si hay campos vacíos.
+    }
+    // --- FIN DE LA VALIDACIÓN ---
+
+    if (_passwordController.text.trim() !=
+        _confirmPasswordController.text.trim()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Las contraseñas no coinciden.')),
       );
@@ -1273,13 +1376,17 @@ class _RegisterPageState extends State<RegisterPage> {
     }
     setState(() => _isLoading = true);
     try {
-      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      UserCredential userCredential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
       // Crear documento de usuario en Firestore
-      await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .set({
         'email': _emailController.text.trim(),
         'coins': 0,
         'createdAt': FieldValue.serverTimestamp(),
@@ -1288,7 +1395,6 @@ class _RegisterPageState extends State<RegisterPage> {
       if (mounted) {
         Navigator.of(context).pop(); // Volver a la página de login
       }
-
     } on FirebaseAuthException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1312,7 +1418,8 @@ class _RegisterPageState extends State<RegisterPage> {
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: Card(
               elevation: 5,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
@@ -1379,7 +1486,8 @@ class _RegisterPageState extends State<RegisterPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('¿Ya tienes una cuenta?', style: TextStyle(color: Colors.grey.shade600)),
+                        Text('¿Ya tienes una cuenta?',
+                            style: TextStyle(color: Colors.grey.shade600)),
                         TextButton(
                           onPressed: () {
                             Navigator.of(context).pop();
