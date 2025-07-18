@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/services.dart';
 import 'dart:async';
 import 'dart:math';
 import 'dart:ui'; // Import explícito para asegurar la visibilidad de TextDirection
@@ -12,6 +13,14 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // --- LÍNEAS AGREGADAS PARA BLOQUEAR LA ORIENTACIÓN ---
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+  // --- FIN DE LAS LÍNEAS AGREGADAS ---
+
   // Inicializa Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
