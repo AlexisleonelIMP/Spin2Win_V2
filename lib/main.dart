@@ -31,6 +31,7 @@ void main() async {
   );
 }
 
+// --- CONTROLADOR DEL TEMA (MODO OSCURO/CLARO) ---
 class ThemeNotifier extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.light;
   ThemeMode get themeMode => _themeMode;
@@ -42,6 +43,7 @@ class ThemeNotifier extends ChangeNotifier {
   }
 }
 
+// --- Modelo para los Premios ---
 class PrizeItem {
   final String label;
   final int value;
@@ -50,6 +52,9 @@ class PrizeItem {
   PrizeItem({required this.label, required this.value, required this.color});
 }
 
+// =======================================================================
+// ===== 1. WIDGET PRINCIPAL DE LA APP Y TEMA =====
+// =======================================================================
 class Spin2WinApp extends StatelessWidget {
   const Spin2WinApp({super.key});
 
@@ -60,7 +65,7 @@ class Spin2WinApp extends StatelessWidget {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Spin2Win',
-          theme: ThemeData(
+          theme: ThemeData( // TEMA CLARO
             brightness: Brightness.light,
             primarySwatch: Colors.amber,
             fontFamily: 'Poppins',
@@ -104,7 +109,7 @@ class Spin2WinApp extends StatelessWidget {
               ),
             ),
           ),
-          darkTheme: ThemeData(
+          darkTheme: ThemeData( // TEMA OSCURO
             brightness: Brightness.dark,
             primarySwatch: Colors.amber,
             fontFamily: 'Poppins',
@@ -145,6 +150,9 @@ class Spin2WinApp extends StatelessWidget {
   }
 }
 
+// =======================================================================
+// ===== 2. MANEJO DE AUTENTICACIÓN (LOGIN/LOGOUT) =====
+// =======================================================================
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
@@ -166,6 +174,9 @@ class AuthWrapper extends StatelessWidget {
   }
 }
 
+// =======================================================================
+// ===== 3. PÁGINA PRINCIPAL (CONTENEDOR DE JUEGO, CANJE, HISTORIAL) =====
+// =======================================================================
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
 
@@ -182,7 +193,6 @@ class _MainPageState extends State<MainPage> {
     });
   }
 
-  // --- FUNCIÓN DE DIÁLOGO MODIFICADA ---
   void _showProfileDialog(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
@@ -222,10 +232,9 @@ class _MainPageState extends State<MainPage> {
                 );
               },
             ),
-            // --- OPCIÓN DE LOGOUT AGREGADA AQUÍ ---
             SimpleDialogOption(
               onPressed: () async {
-                Navigator.of(context).pop(); // Cierra el diálogo primero
+                Navigator.of(context).pop(); 
                 await GoogleSignIn().signOut();
                 await FirebaseAuth.instance.signOut();
               },
@@ -239,7 +248,6 @@ class _MainPageState extends State<MainPage> {
       },
     );
   }
-  // --- FIN DE LA FUNCIÓN MODIFICADA ---
 
   @override
   Widget build(BuildContext context) {
@@ -255,7 +263,18 @@ class _MainPageState extends State<MainPage> {
       builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
-            appBar: AppBar(title: const Text('Spin2Win')),
+            appBar: AppBar(
+                title: const Text('Spin2Win'),
+                actions: const [
+                  Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2.0)),
+                  ),
+                ]),
             body: const Center(child: CircularProgressIndicator()),
           );
         }
@@ -316,7 +335,6 @@ class _MainPageState extends State<MainPage> {
                   _showProfileDialog(context);
                 },
               ),
-              // --- EL BOTÓN DE LOGOUT DE AQUÍ FUE ELIMINADO ---
             ],
           ),
           body: Center(
@@ -347,6 +365,9 @@ class _MainPageState extends State<MainPage> {
   }
 }
 
+// =======================================================================
+// ===== 4. PÁGINA DE JUEGO (RULETA) =====
+// =======================================================================
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -456,8 +477,8 @@ class _HomePageState extends State<HomePage> {
 }
 
 class FortuneWheel extends StatefulWidget {
-  final List<dynamic> items;
-  final Function(dynamic) onSpinEnd;
+  final List<PrizeItem> items;
+  final Function(PrizeItem) onSpinEnd;
 
   const FortuneWheel({required this.items, required this.onSpinEnd, Key? key})
       : super(key: key);
@@ -534,7 +555,7 @@ class FortuneWheelState extends State<FortuneWheel>
           },
           child: CustomPaint(
             size: const Size.square(300),
-            painter: RoulettePainter(items: widget.items.cast<PrizeItem>()),
+            painter: RoulettePainter(items: widget.items),
           ),
         ),
         const RoulettePointer(),
@@ -650,6 +671,9 @@ class RoulettePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+// =======================================================================
+// ===== 5. PÁGINA DE CANJEAR =====
+// =======================================================================
 class ExchangePage extends StatefulWidget {
   final int userCoins;
   const ExchangePage({super.key, required this.userCoins});
@@ -696,7 +720,8 @@ class _ExchangePageState extends State<ExchangePage> {
     if (coinsToWithdraw < _minimumWithdrawal) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text('El retiro mínimo es de $_minimumWithdrawal monedas.')),
+            content:
+                Text('El retiro mínimo es de $_minimumWithdrawal monedas.')),
       );
       return;
     }
@@ -712,7 +737,8 @@ class _ExchangePageState extends State<ExchangePage> {
     setState(() => _isLoading = true);
 
     try {
-      final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final userRef =
+          FirebaseFirestore.instance.collection('users').doc(user.uid);
       final withdrawalRef =
           FirebaseFirestore.instance.collection('withdrawal_requests').doc();
 
@@ -786,27 +812,32 @@ class _ExchangePageState extends State<ExchangePage> {
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: _InfoCard(
-                      title: 'Tu Saldo',
-                      value: '${widget.userCoins}',
-                      icon: Icons.monetization_on,
-                      color: Colors.amber.shade100,
+              // --- ARREGLO APLICADO AQUÍ ---
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: _InfoCard(
+                        title: 'Tu Saldo',
+                        value: '${widget.userCoins}',
+                        icon: Icons.monetization_on,
+                        color: Colors.amber.shade100,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded( // <-- CORRECCIÓN 'const'
-                    child: _InfoCard(
-                      title: 'Total Retirado',
-                      value: '\$0.00',
-                      icon: Icons.history,
-                      color: Colors.green.shade100,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _InfoCard(
+                        title: 'Total Retirado',
+                        value: '\$0.00',
+                        icon: Icons.history,
+                        color: Colors.green.shade100,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              // --- FIN DEL ARREGLO ---
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -946,6 +977,9 @@ class _InfoCard extends StatelessWidget {
   }
 }
 
+// =======================================================================
+// ===== 6. PÁGINA DE HISTORIAL =====
+// =======================================================================
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
 
@@ -1058,6 +1092,7 @@ class SpinHistoryView extends StatelessWidget {
           itemBuilder: (context, index) {
             final data = docs[index].data() as Map<String, dynamic>;
             final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
+            
             final dateString = timestamp != null
                 ? "${timestamp.toLocal().day.toString().padLeft(2, '0')}/${timestamp.toLocal().month.toString().padLeft(2, '0')}/${timestamp.toLocal().year} ${timestamp.toLocal().hour.toString().padLeft(2, '0')}:${timestamp.toLocal().minute.toString().padLeft(2, '0')}"
                 : 'Fecha no disponible';
@@ -1065,10 +1100,9 @@ class SpinHistoryView extends StatelessWidget {
             return Card(
               margin: const EdgeInsets.symmetric(vertical: 4),
               child: ListTile(
-                leading: const Icon(Icons.star_border_purple500_outlined),
+                leading: Icon(Icons.monetization_on, color: Colors.amber.shade800),
                 title: Text(data['prize'] ?? 'Premio no disponible'),
-                subtitle: Text('${data['coins'] ?? 0} Monedas Ganadas'),
-                trailing: Text(dateString),
+                subtitle: Text(dateString),
               ),
             );
           },
@@ -1155,6 +1189,9 @@ class WithdrawalHistoryView extends StatelessWidget {
   }
 }
 
+// =======================================================================
+// ===== 7. PÁGINA DE LOGIN (CORREGIDA) =====
+// =======================================================================
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -1197,17 +1234,23 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  // --- FUNCIÓN MODIFICADA ---
   Future<void> _signInWithEmail() async {
+    // PASO 1: VALIDACIÓN DE CAMPOS
+    // Verificamos si alguno de los campos de texto está vacío.
     if (_emailController.text.trim().isEmpty ||
         _passwordController.text.trim().isEmpty) {
+      // Si están vacíos, mostramos un mensaje amigable al usuario.
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Por favor, completa tu correo y contraseña.'),
           backgroundColor: Colors.red,
         ),
       );
+      // Salimos de la función para no intentar el inicio de sesión.
       return;
     }
+    // FIN DE LA VALIDACIÓN
 
     setState(() => _isLoading = true);
     try {
@@ -1217,6 +1260,7 @@ class _LoginPageState extends State<LoginPage> {
       );
     } on FirebaseAuthException catch (e) {
       if (mounted) {
+        // MEJORA: Mensaje de error más específico y amigable para el usuario.
         String errorMessage = 'Ocurrió un error. Intenta de nuevo.';
         if (e.code == 'user-not-found' ||
             e.code == 'wrong-password' ||
@@ -1236,6 +1280,7 @@ class _LoginPageState extends State<LoginPage> {
       }
     }
   }
+  // --- FIN DE LA FUNCIÓN MODIFICADA ---
 
   @override
   Widget build(BuildContext context) {
@@ -1343,7 +1388,7 @@ class _LoginPageState extends State<LoginPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Flexible( // <-- ARREGLO DE OVERFLOW
+                        Flexible(
                           child: Text('¿No tienes una cuenta?', style: TextStyle(color: Colors.grey.shade600)),
                         ),
                         TextButton(
