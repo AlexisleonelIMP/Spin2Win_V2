@@ -18,6 +18,7 @@ dependencies:
   
   # State Management
   provider: ^6.1.2
+  shared_preferences: ^2.2.3
 
   # Icons
   cupertino_icons: ^1.0.8
@@ -35,4 +36,4 @@ flutter:
       fonts:
         - asset: fonts/Poppins-Regular.ttf
         - asset: fonts/Poppins-Bold.ttf
-          weight: 700 # El 'weight: 700' le dice a Flutter que este es el archivo para la negrita.
+          weight: 700 

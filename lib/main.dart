@@ -5,11 +5,57 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 
+// Asegúrate de tener tu archivo firebase_options.dart
 import 'firebase_options.dart';
+
+// =======================================================================
+// ===== DEFINICIÓN DE TEMAS (EXTRAÍDO PARA REUTILIZAR) =====
+// =======================================================================
+final ThemeData lightTheme = ThemeData(
+  brightness: Brightness.light,
+  primarySwatch: Colors.amber,
+  fontFamily: 'Poppins',
+  scaffoldBackgroundColor: const Color(0xFFFDFBF3),
+    textTheme: const TextTheme(
+    bodyLarge: TextStyle(fontWeight: FontWeight.normal, fontSize: 16),
+    bodyMedium: TextStyle(fontWeight: FontWeight.normal, fontSize: 14),
+  ),
+  colorScheme: ColorScheme.fromSwatch(
+    primarySwatch: Colors.amber,
+    brightness: Brightness.light,
+  ).copyWith(
+    secondary: const Color(0xFFF9693B),
+    surface: const Color(0xFFFFFFFF),
+    onSurface: Colors.black87,
+  ),
+  appBarTheme: const AppBarTheme(
+    backgroundColor: Color(0xFFFFF8E1),
+    elevation: 1,
+    titleTextStyle: TextStyle(
+      fontFamily: 'Poppins',
+      color: Colors.black87,
+      fontSize: 20,
+      fontWeight: FontWeight.w600,
+    ),
+    iconTheme: IconThemeData(color: Colors.black87),
+  ),
+  inputDecorationTheme: const InputDecorationTheme(
+    border: UnderlineInputBorder(),
+    focusedBorder: UnderlineInputBorder(
+      borderSide: BorderSide(color: Colors.amber),
+    ),
+  ),
+  textButtonTheme: TextButtonThemeData(
+    style: TextButton.styleFrom(
+      foregroundColor: const Color(0xFFF9693B),
+    ),
+  ),
+);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,55 +111,16 @@ class Spin2WinApp extends StatelessWidget {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Spin2Win',
-          theme: ThemeData( // TEMA CLARO
-            brightness: Brightness.light,
-            primarySwatch: Colors.amber,
-            fontFamily: 'Poppins',
-            scaffoldBackgroundColor: const Color(0xFFFDFBF3),
-            colorScheme: ColorScheme.fromSwatch(
-              primarySwatch: Colors.amber,
-              brightness: Brightness.light,
-            ).copyWith(
-              secondary: const Color(0xFFF9693B),
-              surface: const Color(0xFFFFFFFF),
-              onSurface: Colors.black87,
-            ),
-            appBarTheme: const AppBarTheme(
-              backgroundColor: Color(0xFFFFF8E1),
-              elevation: 1,
-              titleTextStyle: TextStyle(
-                fontFamily: 'Poppins',
-                color: Colors.black87,
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-              ),
-              iconTheme: IconThemeData(color: Colors.black87),
-            ),
-            inputDecorationTheme: InputDecorationTheme(
-              filled: true,
-              fillColor: const Color(0xFFFDFBF3),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-              prefixIconColor: Colors.grey.shade600,
-              hintStyle: TextStyle(color: Colors.grey.shade400),
-            ),
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFF9693B),
-              ),
-            ),
-          ),
-          darkTheme: ThemeData( // TEMA OSCURO
+          theme: lightTheme, // Usamos la variable de tema claro
+          darkTheme: ThemeData(
             brightness: Brightness.dark,
             primarySwatch: Colors.amber,
             fontFamily: 'Poppins',
             scaffoldBackgroundColor: const Color(0xFF121212),
+            textTheme: const TextTheme(
+              bodyLarge: TextStyle(fontWeight: FontWeight.normal, fontSize: 16),
+              bodyMedium: TextStyle(fontWeight: FontWeight.normal, fontSize: 14),
+            ),
             colorScheme: ColorScheme.fromSwatch(
               primarySwatch: Colors.amber,
               brightness: Brightness.dark,
@@ -124,17 +131,12 @@ class Spin2WinApp extends StatelessWidget {
             appBarTheme: const AppBarTheme(
               backgroundColor: Color(0xFF1E1E1E),
             ),
-            inputDecorationTheme: InputDecorationTheme(
-              filled: true,
-              fillColor: Colors.grey.shade800,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade700),
+              inputDecorationTheme: InputDecorationTheme(
+              border: const UnderlineInputBorder(),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.amber.shade400),
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade700),
-              ),
+              labelStyle: TextStyle(color: Colors.grey.shade400),
             ),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
@@ -234,7 +236,7 @@ class _MainPageState extends State<MainPage> {
             ),
             SimpleDialogOption(
               onPressed: () async {
-                Navigator.of(context).pop(); 
+                Navigator.of(context).pop();
                 await GoogleSignIn().signOut();
                 await FirebaseAuth.instance.signOut();
               },
@@ -449,7 +451,7 @@ class _HomePageState extends State<HomePage> {
                 key: _wheelKey,
                 items: _prizes,
                 onSpinEnd: (prize) {
-                  _updateUserCoins(prize as PrizeItem);
+                  _updateUserCoins(prize);
                 },
               ),
             ),
@@ -791,12 +793,11 @@ class _ExchangePageState extends State<ExchangePage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Card(
         elevation: 4,
-        color: theme.colorScheme.surface,
+        color: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -804,7 +805,7 @@ class _ExchangePageState extends State<ExchangePage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Icon(Icons.account_balance_wallet_outlined,
-                  size: 48, color: theme.colorScheme.primary),
+                  size: 48, color: Theme.of(context).colorScheme.primary),
               const SizedBox(height: 16),
               const Text(
                 'Solicitar Retiro',
@@ -812,7 +813,6 @@ class _ExchangePageState extends State<ExchangePage> {
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
-              // --- ARREGLO APLICADO AQUÍ ---
               IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -837,7 +837,6 @@ class _ExchangePageState extends State<ExchangePage> {
                   ],
                 ),
               ),
-              // --- FIN DEL ARREGLO ---
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -893,7 +892,7 @@ class _ExchangePageState extends State<ExchangePage> {
                   label: const Text('Solicitar Retiro'),
                   onPressed: _submitWithdrawalRequest,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.colorScheme.secondary,
+                    backgroundColor: Theme.of(context).colorScheme.secondary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     textStyle: const TextStyle(
@@ -918,7 +917,7 @@ class _ExchangePageState extends State<ExchangePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+        Text(label),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
@@ -1005,19 +1004,18 @@ class _HistoryPageState extends State<HistoryPage>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Card(
         elevation: 4,
-        color: theme.colorScheme.surface,
+        color: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
               Icon(Icons.history_edu_outlined,
-                  size: 48, color: theme.colorScheme.primary),
+                  size: 48, color: Theme.of(context).colorScheme.primary),
               const SizedBox(height: 16),
               const Text(
                 'Tu Historial',
@@ -1026,9 +1024,9 @@ class _HistoryPageState extends State<HistoryPage>
               const SizedBox(height: 16),
               TabBar(
                 controller: _tabController,
-                labelColor: theme.colorScheme.secondary,
+                labelColor: Theme.of(context).colorScheme.secondary,
                 unselectedLabelColor: Colors.grey.shade600,
-                indicatorColor: theme.colorScheme.secondary,
+                indicatorColor: Theme.of(context).colorScheme.secondary,
                 tabs: const [
                   Tab(
                       icon: Icon(Icons.casino_outlined),
@@ -1111,7 +1109,6 @@ class SpinHistoryView extends StatelessWidget {
     );
   }
 }
-
 class WithdrawalHistoryView extends StatelessWidget {
   const WithdrawalHistoryView({super.key});
 
@@ -1190,7 +1187,7 @@ class WithdrawalHistoryView extends StatelessWidget {
 }
 
 // =======================================================================
-// ===== 7. PÁGINA DE LOGIN (CORREGIDA) =====
+// ===== 7. PÁGINA DE LOGIN =====
 // =======================================================================
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -1202,7 +1199,68 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _recoveryEmailController = TextEditingController();
   bool _isLoading = false;
+  bool _rememberMe = false;
+  bool _showPasswordReset = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserEmailPreference();
+  }
+
+  Future<void> _loadUserEmailPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = prefs.getString('email');
+    final rememberMe = prefs.getBool('rememberMe') ?? false;
+
+    if (rememberMe && email != null) {
+      setState(() {
+        _emailController.text = email;
+        _rememberMe = rememberMe;
+      });
+    }
+  }
+
+  Future<void> _handleRememberMe(bool? value) async {
+    setState(() {
+      _rememberMe = value ?? false;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    if (_rememberMe) {
+      await prefs.setString('email', _emailController.text.trim());
+      await prefs.setBool('rememberMe', true);
+    } else {
+      await prefs.remove('email');
+      await prefs.remove('rememberMe');
+    }
+  }
+
+  Future<void> _sendPasswordResetEmail() async {
+    if (_recoveryEmailController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Por favor, ingresa tu correo electrónico.')));
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      await FirebaseAuth.instance
+          .sendPasswordResetEmail(email: _recoveryEmailController.text.trim());
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Se ha enviado un enlace a tu correo.')));
+      setState(() {
+        _showPasswordReset = false;
+      });
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: ${e.message}')));
+    } finally {
+      if(mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = true);
@@ -1212,14 +1270,12 @@ class _LoginPageState extends State<LoginPage> {
         if (mounted) setState(() => _isLoading = false);
         return;
       }
-
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
       final OAuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
-
       await FirebaseAuth.instance.signInWithCredential(credential);
     } catch (e) {
       if (mounted) {
@@ -1234,24 +1290,18 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // --- FUNCIÓN MODIFICADA ---
   Future<void> _signInWithEmail() async {
-    // PASO 1: VALIDACIÓN DE CAMPOS
-    // Verificamos si alguno de los campos de texto está vacío.
     if (_emailController.text.trim().isEmpty ||
         _passwordController.text.trim().isEmpty) {
-      // Si están vacíos, mostramos un mensaje amigable al usuario.
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Por favor, completa tu correo y contraseña.'),
           backgroundColor: Colors.red,
         ),
       );
-      // Salimos de la función para no intentar el inicio de sesión.
       return;
     }
-    // FIN DE LA VALIDACIÓN
-
+    await _handleRememberMe(_rememberMe);
     setState(() => _isLoading = true);
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -1260,7 +1310,6 @@ class _LoginPageState extends State<LoginPage> {
       );
     } on FirebaseAuthException catch (e) {
       if (mounted) {
-        // MEJORA: Mensaje de error más específico y amigable para el usuario.
         String errorMessage = 'Ocurrió un error. Intenta de nuevo.';
         if (e.code == 'user-not-found' ||
             e.code == 'wrong-password' ||
@@ -1280,163 +1329,142 @@ class _LoginPageState extends State<LoginPage> {
       }
     }
   }
-  // --- FIN DE LA FUNCIÓN MODIFICADA ---
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Scaffold(
-      backgroundColor: const Color(0xFFFDFBF3),
-      body: SafeArea(
-        child: Center(
+    return Theme(
+      data: lightTheme, // <- SE FUERZA EL TEMA CLARO
+      child: Scaffold(
+        body: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Card(
-              elevation: 5,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      '¡Bienvenido de Nuevo!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.primary,
-                      ),
+            padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 40),
+                const Text(
+                  'Iniciar Sesión',
+                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 60),
+                TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Correo electrónico',
+                    prefixIcon: Icon(Icons.mail_outline),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Contraseña',
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
+                ),
+                CheckboxListTile(
+                  title: const Text("Recordarme al iniciar"),
+                  value: _rememberMe,
+                  onChanged: _handleRememberMe,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _signInWithEmail,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Inicia sesión para girar la rueda de la fortuna',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey.shade600),
+                  ),
+                  child: const Text('Ingresar'),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  onPressed: _isLoading ? null : _signInWithGoogle,
+                  icon: Image.network(
+                      'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1024px-Google_%22G%22_logo.svg.png',
+                      height: 18.0),
+                  label: const Text('Ingresar con Google'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black87,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(50),
+                      side: BorderSide(color: Colors.grey.shade300),
                     ),
-                    const SizedBox(height: 32),
-                    _buildTextField(
-                      controller: _emailController,
-                      label: 'Correo Electrónico',
-                      hint: 'tu@ejemplo.com',
-                      icon: Icons.mail_outline,
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-                    const SizedBox(height: 24),
-                    _buildTextField(
-                      controller: _passwordController,
-                      label: 'Contraseña',
-                      hint: '********',
-                      icon: Icons.lock_outline,
-                      obscureText: true,
-                    ),
-                    const SizedBox(height: 24),
-                    if (_isLoading)
-                      const Center(child: CircularProgressIndicator())
-                    else
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.arrow_forward),
-                            label: const Text('Iniciar Sesión'),
-                            onPressed: _signInWithEmail,
-                            style: ElevatedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
-                                backgroundColor: theme.colorScheme.secondary,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12))),
-                          ),
-                          const SizedBox(height: 24),
-                          Row(
-                            children: [
-                              Expanded(
-                                  child: Divider(color: Colors.grey.shade300)),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 8.0),
-                                child: Text('O CONTINÚA CON',
-                                    style:
-                                        TextStyle(color: Colors.grey.shade500)),
-                              ),
-                              Expanded(
-                                  child: Divider(color: Colors.grey.shade300)),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-                          OutlinedButton.icon(
-                            icon: Image.network(
-                                'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1024px-Google_%22G%22_logo.svg.png',
-                                height: 18.0),
-                            label: const Text('Iniciar sesión con Google'),
-                            onPressed: _signInWithGoogle,
-                            style: OutlinedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
-                                side: BorderSide(color: Colors.grey.shade300),
-                                foregroundColor: Colors.black87,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12))),
-                          ),
-                        ],
-                      ),
-                    const SizedBox(height: 32),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  ),
+                ),
+                const SizedBox(height: 30),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                        builder: (context) => const RegisterPage()));
+                  },
+                  child: Text.rich(
+                    TextSpan(
+                      text: '¿No tienes cuenta? ',
+                      style: const TextStyle(color: Colors.black54),
                       children: [
-                        Flexible(
-                          child: Text('¿No tienes una cuenta?', style: TextStyle(color: Colors.grey.shade600)),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.of(context).push(MaterialPageRoute(
-                                builder: (context) => const RegisterPage()));
-                          },
-                          child: const Text('Regístrate'),
+                        TextSpan(
+                          text: 'Regístrate',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _showPasswordReset = !_showPasswordReset;
+                    });
+                  },
+                  child: const Text('¿Olvidaste tu contraseña?'),
+                ),
+                if (_showPasswordReset)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 20.0),
+                    child: Column(
+                      children: [
+                        const Text(
+                            'Ingrese su correo para recuperar la contraseña.'),
+                        const SizedBox(height: 10),
+                        TextField(
+                          controller: _recoveryEmailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: const InputDecoration(
+                            labelText: 'Correo de recuperación',
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        ElevatedButton(
+                          onPressed: _isLoading ? null : _sendPasswordResetEmail,
+                          child: const Text('Enviar correo'),
+                        )
+                      ],
+                    ),
+                  )
+              ],
             ),
           ),
         ),
       ),
     );
   }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    bool obscureText = false,
-    TextInputType? keyboardType,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          obscureText: obscureText,
-          keyboardType: keyboardType,
-          decoration: InputDecoration(
-            hintText: hint,
-            prefixIcon: Icon(icon),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
+// =======================================================================
+// ===== 8. PÁGINA DE REGISTRO =====
+// =======================================================================
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -1447,26 +1475,20 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
+  final _nameController = TextEditingController();
+  final _userController = TextEditingController();
   bool _isLoading = false;
 
   Future<void> _registerUser() async {
     if (_emailController.text.trim().isEmpty ||
         _passwordController.text.trim().isEmpty ||
-        _confirmPasswordController.text.trim().isEmpty) {
+        _nameController.text.trim().isEmpty ||
+        _userController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Por favor, completa todos los campos.'),
           backgroundColor: Colors.red,
         ),
-      );
-      return;
-    }
-
-    if (_passwordController.text.trim() !=
-        _confirmPasswordController.text.trim()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Las contraseñas no coinciden.')),
       );
       return;
     }
@@ -1482,12 +1504,15 @@ class _RegisterPageState extends State<RegisterPage> {
           .collection('users')
           .doc(userCredential.user!.uid)
           .set({
+        'name': _nameController.text.trim(),
+        'username': _userController.text.trim(),
         'email': _emailController.text.trim(),
         'coins': 0,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
       if (mounted) {
+        // Vuelve a la pantalla de Login
         Navigator.of(context).pop();
       }
     } on FirebaseAuthException catch (e) {
@@ -1503,126 +1528,159 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
+  Future<void> _signInWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      
+      UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+
+      final userDoc = FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid);
+      final docSnapshot = await userDoc.get();
+
+      // Si el documento del usuario no existe, es un nuevo registro
+      if (!docSnapshot.exists) {
+        await userDoc.set({
+          'name': userCredential.user?.displayName ?? 'Sin Nombre',
+          'username': userCredential.user?.email?.split('@').first ?? 'usuario_google',
+          'email': userCredential.user?.email,
+          'coins': 0,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      if(mounted){
+        // Cierra la pantalla de registro y lleva al usuario a la página principal
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al registrar con Google: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+  
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
+    return Theme(
+      data: lightTheme, // <- SE FUERZA EL TEMA CLARO
+      child: Scaffold(
+        body: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Card(
-              elevation: 5,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Crear una Cuenta',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+            padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 40),
+                const Text(
+                  'Registrar',
+                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 60),
+                TextField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: _userController,
+                  decoration: const InputDecoration(
+                    labelText: 'Usuario',
+                    prefixIcon: Icon(Icons.alternate_email),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Correo electrónico',
+                    prefixIcon: Icon(Icons.mail_outline),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Contraseña',
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
+                ),
+                const SizedBox(height: 40),
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _registerUser,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '¡Únete a nosotros y comienza a ganar hoy!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey.shade600),
+                  ),
+                  child: const Text('Registrar'),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  onPressed: _isLoading ? null : _signInWithGoogle,
+                  icon: Image.network(
+                      'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1024px-Google_%22G%22_logo.svg.png',
+                      height: 18.0),
+                  label: const Text('Registrarse con Google'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black87,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(50),
+                      side: BorderSide(color: Colors.grey.shade300),
                     ),
-                    const SizedBox(height: 32),
-                    _buildTextField(
-                      controller: _emailController,
-                      label: 'Correo Electrónico',
-                      hint: 'tu@ejemplo.com',
-                      icon: Icons.mail_outline,
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-                    const SizedBox(height: 24),
-                    _buildTextField(
-                      controller: _passwordController,
-                      label: 'Contraseña',
-                      hint: '********',
-                      icon: Icons.lock_outline,
-                      obscureText: true,
-                    ),
-                    const SizedBox(height: 24),
-                    _buildTextField(
-                      controller: _confirmPasswordController,
-                      label: 'Confirmar Contraseña',
-                      hint: '********',
-                      icon: Icons.lock_outline,
-                      obscureText: true,
-                    ),
-                    const SizedBox(height: 24),
-                    if (_isLoading)
-                      const Center(child: CircularProgressIndicator())
-                    else
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.person_add_alt_1_outlined),
-                        label: const Text('Registrarse'),
-                        onPressed: _registerUser,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          backgroundColor: Theme.of(context).colorScheme.secondary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 32),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  ),
+                ),
+                const SizedBox(height: 30),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text.rich(
+                    TextSpan(
+                      text: '¿Ya tienes cuenta? ',
+                      style: const TextStyle(color: Colors.black54),
                       children: [
-                        Text('¿Ya tienes una cuenta?',
-                            style: TextStyle(color: Colors.grey.shade600)),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                          child: const Text('Inicia Sesión'),
+                        TextSpan(
+                          text: 'Inicia sesión',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    bool obscureText = false,
-    TextInputType? keyboardType,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          obscureText: obscureText,
-          keyboardType: keyboardType,
-          decoration: InputDecoration(
-            hintText: hint,
-            prefixIcon: Icon(icon),
-          ),
-        ),
-      ],
     );
   }
 }
