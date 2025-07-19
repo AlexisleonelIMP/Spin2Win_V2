@@ -258,8 +258,8 @@ class _MainPageState extends State<MainPage> {
     if (user == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-
-    const List<Widget> widgetOptions = [ // Se revierte a una lista simple
+    
+    const List<Widget> widgetOptions = [
       HomePage(),
       ExchangePage(),
       HistoryPage(),
@@ -371,7 +371,7 @@ class _MainPageState extends State<MainPage> {
 // ===== 4. PÁGINA DE JUEGO (RULETA) =====
 // =======================================================================
 class HomePage extends StatefulWidget {
-  const HomePage({super.key}); // Se revierte el constructor
+  const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -379,6 +379,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final GlobalKey<FortuneWheelState> _wheelKey = GlobalKey();
+  bool _isSpinning = false;
 
   final List<PrizeItem> _prizes = [
     PrizeItem(label: '10 Monedas', value: 10, color: Colors.blue.shade400),
@@ -428,6 +429,15 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void _onSpinEnd(PrizeItem prize) async {
+    await _updateUserCoins(prize);
+    if (mounted) {
+      setState(() {
+        _isSpinning = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -450,18 +460,21 @@ class _HomePageState extends State<HomePage> {
               child: FortuneWheel(
                 key: _wheelKey,
                 items: _prizes,
-                onSpinEnd: (prize) {
-                  _updateUserCoins(prize);
-                },
+                onSpinEnd: _onSpinEnd,
               ),
             ),
             const SizedBox(height: 40),
             ElevatedButton.icon(
               icon: const Icon(Icons.play_circle_fill),
               label: const Text('GIRAR LA RULETA'),
-              onPressed: () { // Se revierte a la lógica simple
-                _wheelKey.currentState?.spin();
-              },
+              onPressed: _isSpinning
+                  ? null
+                  : () {
+                      setState(() {
+                        _isSpinning = true;
+                      });
+                      _wheelKey.currentState?.spin();
+                    },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.secondary,
                 foregroundColor: Colors.white,
@@ -1275,6 +1288,14 @@ class _LoginPageState extends State<LoginPage> {
     _loadUserEmailPreference();
   }
 
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _recoveryEmailController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadUserEmailPreference() async {
     final prefs = await SharedPreferences.getInstance();
     final email = prefs.getString('email');
@@ -1404,63 +1425,72 @@ class _LoginPageState extends State<LoginPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const SizedBox(height: 60), 
+              const SizedBox(height: 60),
               const Text(
                 'Iniciar Sesión',
                 style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 80), 
+              const SizedBox(height: 80),
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   hintText: 'Correo electrónico',
-                  hintStyle: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.5)),
+                  hintStyle: TextStyle(
+                      color: Theme.of(context)
+                          .textTheme
+                          .bodyLarge
+                          ?.color
+                          ?.withOpacity(0.5)),
                   prefixIcon: const Icon(Icons.mail_outline),
                 ),
               ),
-              const SizedBox(height: 24), 
+              const SizedBox(height: 24),
               TextField(
                 controller: _passwordController,
                 obscureText: true,
                 decoration: InputDecoration(
                   hintText: 'Contraseña',
-                  hintStyle: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.5)),
+                  hintStyle: TextStyle(
+                      color: Theme.of(context)
+                          .textTheme
+                          .bodyLarge
+                          ?.color
+                          ?.withOpacity(0.5)),
                   prefixIcon: const Icon(Icons.lock_outline),
                 ),
               ),
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    height: 24.0,
-                    width: 24.0,
-                    child: Checkbox(
-                      value: _rememberMe,
-                      onChanged: _handleRememberMe,
-                      visualDensity: VisualDensity.compact, 
-                    ),
+              // ***** WIDGET "RECORDARME" CORREGIDO Y ALINEADO *****
+              ListTile(
+                contentPadding: const EdgeInsets.only(left: 4.0), 
+                horizontalTitleGap: 8.0, // Reduce el espacio entre checkbox y texto
+                leading: Checkbox(
+                  value: _rememberMe,
+                  onChanged: _handleRememberMe,
+                  visualDensity: VisualDensity.compact,
+                ),
+                title: Text(
+                  "Recordarme al iniciar",
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500, // Letra un poco más gruesa
+                    color: Theme.of(context)
+                        .textTheme
+                        .bodyLarge
+                        ?.color
+                        ?.withOpacity(0.7),
                   ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => _handleRememberMe(!_rememberMe),
-                    child: Text(
-                      "Recordarme al iniciar",
-                      style: TextStyle(
-                        fontSize: 14, 
-                        color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.7),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
+                onTap: () => _handleRememberMe(!_rememberMe),
               ),
               const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: _isLoading ? null : _signInWithEmail,
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 80),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 16, horizontal: 80),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(50),
                   ),
@@ -1475,7 +1505,8 @@ class _LoginPageState extends State<LoginPage> {
                     height: 18.0),
                 label: const Text('Ingresar con Google'),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 30),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 16, horizontal: 30),
                   backgroundColor:
                       Theme.of(context).brightness == Brightness.dark
                           ? Colors.white
@@ -1535,7 +1566,12 @@ class _LoginPageState extends State<LoginPage> {
                         keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
                           hintText: 'Correo de recuperación',
-                          hintStyle: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.5)),
+                          hintStyle: TextStyle(
+                              color: Theme.of(context)
+                                  .textTheme
+                                  .bodyLarge
+                                  ?.color
+                                  ?.withOpacity(0.5)),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -1555,7 +1591,7 @@ class _LoginPageState extends State<LoginPage> {
 }
 
 // =======================================================================
-// ===== 8. PÁGINA DE REGISTRO (CON CAMBIOS DE UI) =====
+// ===== 8. PÁGINA DE REGISTRO =====
 // =======================================================================
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -1570,7 +1606,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final _confirmPasswordController = TextEditingController();
   final _nameController = TextEditingController();
   bool _isLoading = false;
-  
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -1579,7 +1615,6 @@ class _RegisterPageState extends State<RegisterPage> {
     _nameController.dispose();
     super.dispose();
   }
-
 
   Future<void> _registerUser() async {
     if (_emailController.text.trim().isEmpty ||
@@ -1708,7 +1743,12 @@ class _RegisterPageState extends State<RegisterPage> {
                 controller: _nameController,
                 decoration: InputDecoration(
                   hintText: 'Nombre',
-                  hintStyle: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.5)),
+                  hintStyle: TextStyle(
+                      color: Theme.of(context)
+                          .textTheme
+                          .bodyLarge
+                          ?.color
+                          ?.withOpacity(0.5)),
                   prefixIcon: const Icon(Icons.person_outline),
                 ),
               ),
@@ -1718,7 +1758,12 @@ class _RegisterPageState extends State<RegisterPage> {
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   hintText: 'Correo electrónico',
-                   hintStyle: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.5)),
+                  hintStyle: TextStyle(
+                      color: Theme.of(context)
+                          .textTheme
+                          .bodyLarge
+                          ?.color
+                          ?.withOpacity(0.5)),
                   prefixIcon: const Icon(Icons.mail_outline),
                 ),
               ),
@@ -1728,7 +1773,12 @@ class _RegisterPageState extends State<RegisterPage> {
                 obscureText: true,
                 decoration: InputDecoration(
                   hintText: 'Contraseña',
-                   hintStyle: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.5)),
+                  hintStyle: TextStyle(
+                      color: Theme.of(context)
+                          .textTheme
+                          .bodyLarge
+                          ?.color
+                          ?.withOpacity(0.5)),
                   prefixIcon: const Icon(Icons.lock_outline),
                 ),
               ),
@@ -1738,7 +1788,12 @@ class _RegisterPageState extends State<RegisterPage> {
                 obscureText: true,
                 decoration: InputDecoration(
                   hintText: 'Confirmar Contraseña',
-                   hintStyle: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.5)),
+                  hintStyle: TextStyle(
+                      color: Theme.of(context)
+                          .textTheme
+                          .bodyLarge
+                          ?.color
+                          ?.withOpacity(0.5)),
                   prefixIcon: const Icon(Icons.lock_outline),
                 ),
               ),
@@ -1746,7 +1801,8 @@ class _RegisterPageState extends State<RegisterPage> {
               ElevatedButton(
                 onPressed: _isLoading ? null : _registerUser,
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 80),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 16, horizontal: 80),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(50),
                   ),
@@ -1761,7 +1817,8 @@ class _RegisterPageState extends State<RegisterPage> {
                     height: 18.0),
                 label: const Text('Registrarse con Google'),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 30),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 16, horizontal: 30),
                   backgroundColor:
                       Theme.of(context).brightness == Brightness.dark
                           ? Colors.white
