@@ -21,7 +21,7 @@ final ThemeData lightTheme = ThemeData(
   primarySwatch: Colors.amber,
   fontFamily: 'Poppins',
   scaffoldBackgroundColor: const Color(0xFFFDFBF3),
-    textTheme: const TextTheme(
+  textTheme: const TextTheme(
     bodyLarge: TextStyle(fontWeight: FontWeight.normal, fontSize: 16),
     bodyMedium: TextStyle(fontWeight: FontWeight.normal, fontSize: 14),
   ),
@@ -111,7 +111,7 @@ class Spin2WinApp extends StatelessWidget {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Spin2Win',
-          theme: lightTheme, // Usamos la variable de tema claro
+          theme: lightTheme,
           darkTheme: ThemeData(
             brightness: Brightness.dark,
             primarySwatch: Colors.amber,
@@ -131,7 +131,7 @@ class Spin2WinApp extends StatelessWidget {
             appBarTheme: const AppBarTheme(
               backgroundColor: Color(0xFF1E1E1E),
             ),
-              inputDecorationTheme: InputDecorationTheme(
+            inputDecorationTheme: InputDecorationTheme(
               border: const UnderlineInputBorder(),
               focusedBorder: UnderlineInputBorder(
                 borderSide: BorderSide(color: Colors.amber.shade400),
@@ -259,6 +259,12 @@ class _MainPageState extends State<MainPage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    const List<Widget> widgetOptions = [ // Se revierte a una lista simple
+      HomePage(),
+      ExchangePage(),
+      HistoryPage(),
+    ];
+
     return StreamBuilder<DocumentSnapshot>(
       stream:
           FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
@@ -284,15 +290,9 @@ class _MainPageState extends State<MainPage> {
         if (snapshot.hasError) {
           return Scaffold(body: Center(child: Text('Error: ${snapshot.error}')));
         }
-        
+
         final userCoins =
             (snapshot.data?.data() as Map<String, dynamic>?)?['coins'] ?? 0;
-
-        final List<Widget> widgetOptions = [
-          const HomePage(),
-          ExchangePage(userCoins: userCoins),
-          const HistoryPage(),
-        ];
 
         return Scaffold(
           appBar: AppBar(
@@ -324,8 +324,8 @@ class _MainPageState extends State<MainPage> {
                     Text(
                       '$userCoins',
                       style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 18,
                       ),
                     ),
                   ],
@@ -371,7 +371,7 @@ class _MainPageState extends State<MainPage> {
 // ===== 4. PÁGINA DE JUEGO (RULETA) =====
 // =======================================================================
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({super.key}); // Se revierte el constructor
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -459,7 +459,7 @@ class _HomePageState extends State<HomePage> {
             ElevatedButton.icon(
               icon: const Icon(Icons.play_circle_fill),
               label: const Text('GIRAR LA RULETA'),
-              onPressed: () {
+              onPressed: () { // Se revierte a la lógica simple
                 _wheelKey.currentState?.spin();
               },
               style: ElevatedButton.styleFrom(
@@ -677,8 +677,7 @@ class RoulettePainter extends CustomPainter {
 // ===== 5. PÁGINA DE CANJEAR =====
 // =======================================================================
 class ExchangePage extends StatefulWidget {
-  final int userCoins;
-  const ExchangePage({super.key, required this.userCoins});
+  const ExchangePage({super.key});
 
   @override
   State<ExchangePage> createState() => _ExchangePageState();
@@ -700,6 +699,14 @@ class _ExchangePageState extends State<ExchangePage> {
     _coinsController.addListener(_calculateAmountToReceive);
   }
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _aliasController.dispose();
+    _coinsController.dispose();
+    super.dispose();
+  }
+
   void _calculateAmountToReceive() {
     final coins = int.tryParse(_coinsController.text) ?? 0;
     setState(() {
@@ -707,7 +714,22 @@ class _ExchangePageState extends State<ExchangePage> {
     });
   }
 
-  Future<void> _submitWithdrawalRequest() async {
+  Stream<double> _getTotalWithdrawnStream(String userId) {
+    return FirebaseFirestore.instance
+        .collection('withdrawal_requests')
+        .where('userId', isEqualTo: userId)
+        .where('status', isEqualTo: 'completed')
+        .snapshots()
+        .map((snapshot) {
+      double total = 0.0;
+      for (var doc in snapshot.docs) {
+        total += (doc.data()['amountInPesos'] as num).toDouble();
+      }
+      return total;
+    });
+  }
+
+  Future<void> _submitWithdrawalRequest(int currentUserCoins) async {
     final coinsToWithdraw = int.tryParse(_coinsController.text) ?? 0;
     final name = _nameController.text.trim();
     final alias = _aliasController.text.trim();
@@ -727,7 +749,7 @@ class _ExchangePageState extends State<ExchangePage> {
       );
       return;
     }
-    if (coinsToWithdraw > widget.userCoins) {
+    if (coinsToWithdraw > currentUserCoins) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('No tienes suficientes monedas para este retiro.')),
@@ -784,125 +806,157 @@ class _ExchangePageState extends State<ExchangePage> {
   }
 
   @override
-  void dispose() {
-    _nameController.dispose();
-    _aliasController.dispose();
-    _coinsController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Card(
-        elevation: 4,
-        color: Theme.of(context).colorScheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Icon(Icons.account_balance_wallet_outlined,
-                  size: 48, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(height: 16),
-              const Text(
-                'Solicitar Retiro',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 24),
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: _InfoCard(
-                        title: 'Tu Saldo',
-                        value: '${widget.userCoins}',
-                        icon: Icons.monetization_on,
-                        color: Colors.amber.shade100,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _InfoCard(
-                        title: 'Total Retirado',
-                        value: '\$0.00',
-                        icon: Icons.history,
-                        color: Colors.green.shade100,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'Tasa de Cambio: $_exchangeRate Monedas = \$1\nMínimo de retiro: $_minimumWithdrawal monedas (\$${(_minimumWithdrawal / _exchangeRate).toStringAsFixed(2)})',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey.shade700),
-                ),
-              ),
-              const SizedBox(height: 24),
-              _buildTextField(
-                controller: _nameController,
-                label: 'Nombre y Apellido Completo',
-                hint: 'Como figura en tu cuenta',
-                icon: Icons.person_outline,
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _aliasController,
-                label: 'Alias o CBU/CVU',
-                hint: 'Para la transferencia',
-                icon: Icons.vpn_key_outlined,
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                  controller: _coinsController,
-                  label: 'Monedas a Retirar',
-                  hint: 'ej: 10000',
-                  keyboardType: TextInputType.number,
-                  suffixIcon: TextButton(
-                    onPressed: () {
-                      _coinsController.text = widget.userCoins.toString();
-                    },
-                    child: const Text('Max'),
-                  )),
-              const SizedBox(height: 24),
-              Text(
-                'Recibirás (aprox.): \$${_amountToReceive.toStringAsFixed(2)}',
-                textAlign: TextAlign.center,
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 24),
-              if (_isLoading)
-                const Center(child: CircularProgressIndicator())
-              else
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.send_outlined),
-                  label: const Text('Solicitar Retiro'),
-                  onPressed: _submitWithdrawalRequest,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.secondary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    textStyle: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold),
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const Center(child: Text("Usuario no encontrado."));
+    }
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream:
+          FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
+      builder: (context, userSnapshot) {
+        if (userSnapshot.hasError) {
+          return Center(
+              child: Text("Error al cargar tus datos: ${userSnapshot.error}"));
+        }
+        if (!userSnapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final userCoins =
+            (userSnapshot.data!.data() as Map<String, dynamic>?)?['coins'] ?? 0;
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Card(
+            elevation: 4,
+            color: Theme.of(context).colorScheme.surface,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Icon(Icons.account_balance_wallet_outlined,
+                      size: 48, color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Solicitar Retiro',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
-                ),
-            ],
+                  const SizedBox(height: 24),
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: _InfoCard(
+                            title: 'Tu Saldo',
+                            value: '$userCoins',
+                            icon: Icons.monetization_on,
+                            color: Colors.amber.shade100,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: StreamBuilder<double>(
+                            stream: _getTotalWithdrawnStream(user.uid),
+                            builder: (context, withdrawnSnapshot) {
+                              if (withdrawnSnapshot.hasError) {
+                                return _InfoCard(
+                                  title: 'Total Retirado',
+                                  value: 'Error',
+                                  icon: Icons.error_outline,
+                                  color: Colors.red.shade100,
+                                );
+                              }
+                              final totalWithdrawn =
+                                  withdrawnSnapshot.data ?? 0.0;
+                              return _InfoCard(
+                                title: 'Total Retirado',
+                                value:
+                                    '\$${totalWithdrawn.toStringAsFixed(2)}',
+                                icon: Icons.history,
+                                color: Colors.green.shade100,
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.light ? Colors.grey.shade200 : Colors.grey.shade800,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Tasa de Cambio: $_exchangeRate Monedas = \$1\nMínimo de retiro: $_minimumWithdrawal monedas (\$${(_minimumWithdrawal / _exchangeRate).toStringAsFixed(2)})',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Theme.of(context).brightness == Brightness.light ? Colors.grey.shade700 : Colors.grey.shade300),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildTextField(
+                    controller: _nameController,
+                    label: 'Nombre y Apellido Completo',
+                    hint: 'Como figura en tu cuenta',
+                    icon: Icons.person_outline,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                    controller: _aliasController,
+                    label: 'Alias o CBU/CVU',
+                    hint: 'Para la transferencia',
+                    icon: Icons.vpn_key_outlined,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                      controller: _coinsController,
+                      label: 'Monedas a Retirar',
+                      hint: 'ej: 10000',
+                      keyboardType: TextInputType.number,
+                      suffixIcon: TextButton(
+                        onPressed: () {
+                          _coinsController.text = userCoins.toString();
+                        },
+                        child: const Text('Max'),
+                      )),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Recibirás (aprox.): \$${_amountToReceive.toStringAsFixed(2)}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 24),
+                  if (_isLoading)
+                    const Center(child: CircularProgressIndicator())
+                  else
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.send_outlined),
+                      label: const Text('Solicitar Retiro'),
+                      onPressed: () => _submitWithdrawalRequest(userCoins),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            Theme.of(context).colorScheme.secondary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        textStyle: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -963,10 +1017,13 @@ class _InfoCard extends StatelessWidget {
             children: [
               Icon(icon, color: Colors.grey.shade800),
               const SizedBox(width: 8),
-              Text(
-                value,
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              Expanded(
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 18),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
@@ -1075,6 +1132,9 @@ class SpinHistoryView extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
+        if (snapshot.hasError) {
+          return Center(child: Text("Error: ${snapshot.error}"));
+        }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const Center(
             child: Text(
@@ -1090,7 +1150,7 @@ class SpinHistoryView extends StatelessWidget {
           itemBuilder: (context, index) {
             final data = docs[index].data() as Map<String, dynamic>;
             final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
-            
+
             final dateString = timestamp != null
                 ? "${timestamp.toLocal().day.toString().padLeft(2, '0')}/${timestamp.toLocal().month.toString().padLeft(2, '0')}/${timestamp.toLocal().year} ${timestamp.toLocal().hour.toString().padLeft(2, '0')}:${timestamp.toLocal().minute.toString().padLeft(2, '0')}"
                 : 'Fecha no disponible';
@@ -1098,7 +1158,8 @@ class SpinHistoryView extends StatelessWidget {
             return Card(
               margin: const EdgeInsets.symmetric(vertical: 4),
               child: ListTile(
-                leading: Icon(Icons.monetization_on, color: Colors.amber.shade800),
+                leading:
+                    Icon(Icons.monetization_on, color: Colors.amber.shade800),
                 title: Text(data['prize'] ?? 'Premio no disponible'),
                 subtitle: Text(dateString),
               ),
@@ -1109,6 +1170,7 @@ class SpinHistoryView extends StatelessWidget {
     );
   }
 }
+
 class WithdrawalHistoryView extends StatelessWidget {
   const WithdrawalHistoryView({super.key});
 
@@ -1128,6 +1190,9 @@ class WithdrawalHistoryView extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text("Error: ${snapshot.error}"));
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const Center(
@@ -1187,7 +1252,7 @@ class WithdrawalHistoryView extends StatelessWidget {
 }
 
 // =======================================================================
-// ===== 7. PÁGINA DE LOGIN =====
+// ===== 7. PÁGINA DE LOGIN (CON CAMBIOS DE UI) =====
 // =======================================================================
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -1256,7 +1321,7 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Error: ${e.message}')));
     } finally {
-      if(mounted) {
+      if (mounted) {
         setState(() => _isLoading = false);
       }
     }
@@ -1332,129 +1397,156 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: lightTheme, // <- SE FUERZA EL TEMA CLARO
-      child: Scaffold(
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 40),
-                const Text(
-                  'Iniciar Sesión',
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 60), 
+              const Text(
+                'Iniciar Sesión',
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 80), 
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  hintText: 'Correo electrónico',
+                  hintStyle: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.5)),
+                  prefixIcon: const Icon(Icons.mail_outline),
                 ),
-                const SizedBox(height: 60),
-                TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Correo electrónico',
-                    prefixIcon: Icon(Icons.mail_outline),
-                  ),
+              ),
+              const SizedBox(height: 24), 
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  hintText: 'Contraseña',
+                  hintStyle: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.5)),
+                  prefixIcon: const Icon(Icons.lock_outline),
                 ),
-                const SizedBox(height: 20),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Contraseña',
-                    prefixIcon: Icon(Icons.lock_outline),
-                  ),
-                ),
-                CheckboxListTile(
-                  title: const Text("Recordarme al iniciar"),
-                  value: _rememberMe,
-                  onChanged: _handleRememberMe,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _signInWithEmail,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    height: 24.0,
+                    width: 24.0,
+                    child: Checkbox(
+                      value: _rememberMe,
+                      onChanged: _handleRememberMe,
+                      visualDensity: VisualDensity.compact, 
                     ),
                   ),
-                  child: const Text('Ingresar'),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: _isLoading ? null : _signInWithGoogle,
-                  icon: Image.network(
-                      'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1024px-Google_%22G%22_logo.svg.png',
-                      height: 18.0),
-                  label: const Text('Ingresar con Google'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black87,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(50),
-                      side: BorderSide(color: Colors.grey.shade300),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => _handleRememberMe(!_rememberMe),
+                    child: Text(
+                      "Recordarme al iniciar",
+                      style: TextStyle(
+                        fontSize: 14, 
+                        color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.7),
+                      ),
                     ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: _isLoading ? null : _signInWithEmail,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 80),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(50),
+                  ),
                 ),
-                const SizedBox(height: 30),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) => const RegisterPage()));
-                  },
-                  child: Text.rich(
-                    TextSpan(
-                      text: '¿No tienes cuenta? ',
-                      style: const TextStyle(color: Colors.black54),
-                      children: [
-                        TextSpan(
-                          text: 'Regístrate',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
+                child: const Text('Ingresar'),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: _isLoading ? null : _signInWithGoogle,
+                icon: Image.network(
+                    'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1024px-Google_%22G%22_logo.svg.png',
+                    height: 18.0),
+                label: const Text('Ingresar con Google'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 30),
+                  backgroundColor:
+                      Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : null,
+                  foregroundColor: Colors.black87,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(50),
+                    side: BorderSide(color: Colors.grey.shade300),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).push(MaterialPageRoute(
+                      builder: (context) => const RegisterPage()));
+                },
+                child: Text.rich(
+                  TextSpan(
+                    text: '¿No tienes cuenta? ',
+                    style: TextStyle(
+                        color: Theme.of(context)
+                            .textTheme
+                            .bodyLarge
+                            ?.color
+                            ?.withOpacity(0.6)),
+                    children: [
+                      TextSpan(
+                        text: 'Regístrate',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _showPasswordReset = !_showPasswordReset;
-                    });
-                  },
-                  child: const Text('¿Olvidaste tu contraseña?'),
-                ),
-                if (_showPasswordReset)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 20.0),
-                    child: Column(
-                      children: [
-                        const Text(
-                            'Ingrese su correo para recuperar la contraseña.'),
-                        const SizedBox(height: 10),
-                        TextField(
-                          controller: _recoveryEmailController,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(
-                            labelText: 'Correo de recuperación',
-                          ),
+              ),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _showPasswordReset = !_showPasswordReset;
+                  });
+                },
+                child: const Text('¿Olvidaste tu contraseña?'),
+              ),
+              if (_showPasswordReset)
+                Padding(
+                  padding: const EdgeInsets.only(top: 20.0),
+                  child: Column(
+                    children: [
+                      const Text(
+                          'Ingrese su correo para recuperar la contraseña.'),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _recoveryEmailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: InputDecoration(
+                          hintText: 'Correo de recuperación',
+                          hintStyle: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.5)),
                         ),
-                        const SizedBox(height: 10),
-                        ElevatedButton(
-                          onPressed: _isLoading ? null : _sendPasswordResetEmail,
-                          child: const Text('Enviar correo'),
-                        )
-                      ],
-                    ),
-                  )
-              ],
-            ),
+                      ),
+                      const SizedBox(height: 10),
+                      ElevatedButton(
+                        onPressed: _isLoading ? null : _sendPasswordResetEmail,
+                        child: const Text('Enviar correo'),
+                      )
+                    ],
+                  ),
+                )
+            ],
           ),
         ),
       ),
@@ -1463,7 +1555,7 @@ class _LoginPageState extends State<LoginPage> {
 }
 
 // =======================================================================
-// ===== 8. PÁGINA DE REGISTRO =====
+// ===== 8. PÁGINA DE REGISTRO (CON CAMBIOS DE UI) =====
 // =======================================================================
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -1475,15 +1567,25 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _nameController = TextEditingController();
-  final _userController = TextEditingController();
   bool _isLoading = false;
+  
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _nameController.dispose();
+    super.dispose();
+  }
+
 
   Future<void> _registerUser() async {
     if (_emailController.text.trim().isEmpty ||
         _passwordController.text.trim().isEmpty ||
-        _nameController.text.trim().isEmpty ||
-        _userController.text.trim().isEmpty) {
+        _confirmPasswordController.text.trim().isEmpty ||
+        _nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Por favor, completa todos los campos.'),
@@ -1492,7 +1594,20 @@ class _RegisterPageState extends State<RegisterPage> {
       );
       return;
     }
+
+    if (_passwordController.text.trim() !=
+        _confirmPasswordController.text.trim()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Las contraseñas no coinciden.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
+
     try {
       UserCredential userCredential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -1505,14 +1620,12 @@ class _RegisterPageState extends State<RegisterPage> {
           .doc(userCredential.user!.uid)
           .set({
         'name': _nameController.text.trim(),
-        'username': _userController.text.trim(),
         'email': _emailController.text.trim(),
         'coins': 0,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
       if (mounted) {
-        // Vuelve a la pantalla de Login
         Navigator.of(context).pop();
       }
     } on FirebaseAuthException catch (e) {
@@ -1542,25 +1655,24 @@ class _RegisterPageState extends State<RegisterPage> {
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
-      
-      UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
 
-      final userDoc = FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid);
+      UserCredential userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+
+      final userDoc =
+          FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid);
       final docSnapshot = await userDoc.get();
 
-      // Si el documento del usuario no existe, es un nuevo registro
       if (!docSnapshot.exists) {
         await userDoc.set({
           'name': userCredential.user?.displayName ?? 'Sin Nombre',
-          'username': userCredential.user?.email?.split('@').first ?? 'usuario_google',
           'email': userCredential.user?.email,
           'coins': 0,
           'createdAt': FieldValue.serverTimestamp(),
         });
       }
 
-      if(mounted){
-        // Cierra la pantalla de registro y lleva al usuario a la página principal
+      if (mounted) {
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     } catch (e) {
@@ -1575,109 +1687,119 @@ class _RegisterPageState extends State<RegisterPage> {
       }
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: lightTheme, // <- SE FUERZA EL TEMA CLARO
-      child: Scaffold(
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 40),
-                const Text(
-                  'Registrar',
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 40),
+              const Text(
+                'Registrar',
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 60),
+              TextField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  hintText: 'Nombre',
+                  hintStyle: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.5)),
+                  prefixIcon: const Icon(Icons.person_outline),
                 ),
-                const SizedBox(height: 60),
-                TextField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nombre',
-                    prefixIcon: Icon(Icons.person_outline),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  hintText: 'Correo electrónico',
+                   hintStyle: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.5)),
+                  prefixIcon: const Icon(Icons.mail_outline),
+                ),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  hintText: 'Contraseña',
+                   hintStyle: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.5)),
+                  prefixIcon: const Icon(Icons.lock_outline),
+                ),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: _confirmPasswordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  hintText: 'Confirmar Contraseña',
+                   hintStyle: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.5)),
+                  prefixIcon: const Icon(Icons.lock_outline),
+                ),
+              ),
+              const SizedBox(height: 40),
+              ElevatedButton(
+                onPressed: _isLoading ? null : _registerUser,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 80),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(50),
                   ),
                 ),
-                const SizedBox(height: 20),
-                TextField(
-                  controller: _userController,
-                  decoration: const InputDecoration(
-                    labelText: 'Usuario',
-                    prefixIcon: Icon(Icons.alternate_email),
+                child: const Text('Registrar'),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: _isLoading ? null : _signInWithGoogle,
+                icon: Image.network(
+                    'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1024px-Google_%22G%22_logo.svg.png',
+                    height: 18.0),
+                label: const Text('Registrarse con Google'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 30),
+                  backgroundColor:
+                      Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : null,
+                  foregroundColor: Colors.black87,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(50),
+                    side: BorderSide(color: Colors.grey.shade300),
                   ),
                 ),
-                const SizedBox(height: 20),
-                TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Correo electrónico',
-                    prefixIcon: Icon(Icons.mail_outline),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Contraseña',
-                    prefixIcon: Icon(Icons.lock_outline),
-                  ),
-                ),
-                const SizedBox(height: 40),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _registerUser,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('Registrar'),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: _isLoading ? null : _signInWithGoogle,
-                  icon: Image.network(
-                      'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1024px-Google_%22G%22_logo.svg.png',
-                      height: 18.0),
-                  label: const Text('Registrarse con Google'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black87,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(50),
-                      side: BorderSide(color: Colors.grey.shade300),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 30),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: Text.rich(
-                    TextSpan(
-                      text: '¿Ya tienes cuenta? ',
-                      style: const TextStyle(color: Colors.black54),
-                      children: [
-                        TextSpan(
-                          text: 'Inicia sesión',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
+              ),
+              const SizedBox(height: 30),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text.rich(
+                  TextSpan(
+                    text: '¿Ya tienes cuenta? ',
+                    style: TextStyle(
+                        color: Theme.of(context)
+                            .textTheme
+                            .bodyLarge
+                            ?.color
+                            ?.withOpacity(0.6)),
+                    children: [
+                      TextSpan(
+                        text: 'Inicia sesión',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
