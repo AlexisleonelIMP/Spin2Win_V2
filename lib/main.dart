@@ -119,7 +119,8 @@ class Spin2WinApp extends StatelessWidget {
             scaffoldBackgroundColor: const Color(0xFF121212),
             textTheme: const TextTheme(
               bodyLarge: TextStyle(fontWeight: FontWeight.normal, fontSize: 16),
-              bodyMedium: TextStyle(fontWeight: FontWeight.normal, fontSize: 14),
+              bodyMedium:
+                  TextStyle(fontWeight: FontWeight.normal, fontSize: 14),
             ),
             colorScheme: ColorScheme.fromSwatch(
               primarySwatch: Colors.amber,
@@ -258,7 +259,7 @@ class _MainPageState extends State<MainPage> {
     if (user == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    
+
     const List<Widget> widgetOptions = [
       HomePage(),
       ExchangePage(),
@@ -266,29 +267,31 @@ class _MainPageState extends State<MainPage> {
     ];
 
     return StreamBuilder<DocumentSnapshot>(
-      stream:
-          FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
-      builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots(),
+      builder:
+          (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
-            appBar: AppBar(
-                title: const Text('Spin2Win'),
-                actions: const [
-                  Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2.0)),
-                  ),
-                ]),
+            appBar: AppBar(title: const Text('Spin2Win'), actions: const [
+              Padding(
+                padding: EdgeInsets.all(16.0),
+                child: SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2.0)),
+              ),
+            ]),
             body: const Center(child: CircularProgressIndicator()),
           );
         }
 
         if (snapshot.hasError) {
-          return Scaffold(body: Center(child: Text('Error: ${snapshot.error}')));
+          return Scaffold(
+              body: Center(child: Text('Error: ${snapshot.error}')));
         }
 
         final userCoins =
@@ -318,8 +321,8 @@ class _MainPageState extends State<MainPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Row(
                   children: [
-                    Icon(Icons.monetization_on,
-                        color: Colors.amber.shade800),
+                    // ** ÍCONO #1: AppBar **
+                    Image.asset('assets/monedas.png', width: 24, height: 24),
                     const SizedBox(width: 8),
                     Text(
                       '$userCoins',
@@ -405,7 +408,8 @@ class _HomePageState extends State<HomePage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final userRef =
+        FirebaseFirestore.instance.collection('users').doc(user.uid);
     final historyRef = userRef.collection('rouletteHistory').doc();
 
     await FirebaseFirestore.instance.runTransaction((transaction) async {
@@ -480,8 +484,8 @@ class _HomePageState extends State<HomePage> {
                 foregroundColor: Colors.white,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                textStyle: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold),
+                textStyle:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -517,8 +521,8 @@ class FortuneWheelState extends State<FortuneWheel>
       duration: const Duration(seconds: 6),
     );
 
-    _animation = Tween<double>(begin: 0, end: 0)
-        .animate(CurvedAnimation(parent: _controller, curve: Curves.decelerate));
+    _animation = Tween<double>(begin: 0, end: 0).animate(
+        CurvedAnimation(parent: _controller, curve: Curves.decelerate));
   }
 
   void spin() {
@@ -674,8 +678,8 @@ class RoulettePainter extends CustomPainter {
       );
       textPainter.layout(minWidth: 0, maxWidth: radius * 0.8);
 
-      final textOffset =
-          Offset(radius * 0.55 - textPainter.width / 2, -textPainter.height / 2);
+      final textOffset = Offset(
+          radius * 0.55 - textPainter.width / 2, -textPainter.height / 2);
       textPainter.paint(canvas, textOffset);
 
       canvas.restore();
@@ -826,8 +830,10 @@ class _ExchangePageState extends State<ExchangePage> {
     }
 
     return StreamBuilder<DocumentSnapshot>(
-      stream:
-          FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots(),
       builder: (context, userSnapshot) {
         if (userSnapshot.hasError) {
           return Center(
@@ -861,78 +867,104 @@ class _ExchangePageState extends State<ExchangePage> {
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 24),
-                  IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          child: _InfoCard(
-                            title: 'Tu Saldo',
-                            value: '$userCoins',
-                            icon: Icons.monetization_on,
-                            color: Colors.amber.shade100,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: StreamBuilder<double>(
-                            stream: _getTotalWithdrawnStream(user.uid),
-                            builder: (context, withdrawnSnapshot) {
-                              if (withdrawnSnapshot.hasError) {
-                                return _InfoCard(
-                                  title: 'Total Retirado',
-                                  value: 'Error',
-                                  icon: Icons.error_outline,
-                                  color: Colors.red.shade100,
-                                );
-                              }
-                              final totalWithdrawn =
-                                  withdrawnSnapshot.data ?? 0.0;
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: StreamBuilder<double>(
+                          stream: _getTotalWithdrawnStream(user.uid),
+                          builder: (context, withdrawnSnapshot) {
+                            if (withdrawnSnapshot.connectionState ==
+                                ConnectionState.waiting) {
                               return _InfoCard(
                                 title: 'Total Retirado',
-                                value:
-                                    '\$${totalWithdrawn.toStringAsFixed(2)}',
-                                icon: Icons.history,
+                                value: '...',
+                                iconWidget: const Icon(Icons.history,
+                                    color: Colors.black54),
                                 color: Colors.green.shade100,
                               );
-                            },
-                          ),
+                            }
+                            if (withdrawnSnapshot.hasError) {
+                              return _InfoCard(
+                                title: 'Total Retirado',
+                                value: 'Error',
+                                iconWidget: const Icon(Icons.error_outline,
+                                    color: Colors.black54),
+                                color: Colors.red.shade100,
+                              );
+                            }
+                            final totalWithdrawn =
+                                withdrawnSnapshot.data ?? 0.0;
+                            return _InfoCard(
+                              title: 'Total Retirado',
+                              value: '\$${totalWithdrawn.toInt()}',
+                              iconWidget: const Icon(Icons.history,
+                                  color: Colors.black54),
+                              color: Colors.green.shade100,
+                            );
+                          },
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _InfoCard(
+                          title: 'Tu Saldo',
+                          value: '$userCoins', // Cambio para consistencia
+                          // ** ÍCONO #2: Tarjeta "Tu Saldo" **
+                          iconWidget: Image.asset('assets/monedas.png',
+                              width: 24, height: 24),
+                          color: Colors.amber.shade100,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).brightness == Brightness.light ? Colors.grey.shade200 : Colors.grey.shade800,
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? Colors.grey.shade200
+                          : Colors.grey.shade800,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      'Tasa de Cambio: $_exchangeRate Monedas = \$1\nMínimo de retiro: $_minimumWithdrawal monedas (\$${(_minimumWithdrawal / _exchangeRate).toStringAsFixed(2)})',
+                      'Tasa de Cambio: $_exchangeRate Monedas = \$1\nMínimo de retiro: $_minimumWithdrawal monedas (\$${(_minimumWithdrawal / _exchangeRate).toStringAsFixed(0)})',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Theme.of(context).brightness == Brightness.light ? Colors.grey.shade700 : Colors.grey.shade300),
+                      style: TextStyle(
+                          color:
+                              Theme.of(context).brightness == Brightness.light
+                                  ? Colors.grey.shade700
+                                  : Colors.grey.shade300),
                     ),
                   ),
                   const SizedBox(height: 24),
                   _buildTextField(
+                    context: context,
                     controller: _nameController,
                     label: 'Nombre y Apellido Completo',
                     hint: 'Como figura en tu cuenta',
-                    icon: Icons.person_outline,
+                    prefixIconWidget: const Icon(Icons.person_outline),
                   ),
                   const SizedBox(height: 16),
                   _buildTextField(
+                    context: context,
                     controller: _aliasController,
                     label: 'Alias o CBU/CVU',
                     hint: 'Para la transferencia',
-                    icon: Icons.vpn_key_outlined,
+                    prefixIconWidget: const Icon(Icons.vpn_key_outlined),
                   ),
                   const SizedBox(height: 16),
                   _buildTextField(
+                      context: context,
                       controller: _coinsController,
                       label: 'Monedas a Retirar',
-                      hint: 'ej: 10000',
+                      hint: 'Min. retiro 10.000',
+                      // ** ÍCONO #3: Campo "Monedas a retirar" **
+                      prefixIconWidget: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Image.asset('assets/monedas.png',
+                            width: 20, height: 20),
+                      ),
                       keyboardType: TextInputType.number,
                       suffixIcon: TextButton(
                         onPressed: () {
@@ -942,7 +974,7 @@ class _ExchangePageState extends State<ExchangePage> {
                       )),
                   const SizedBox(height: 24),
                   Text(
-                    'Recibirás (aprox.): \$${_amountToReceive.toStringAsFixed(2)}',
+                    'Recibirás: \$${_amountToReceive.toInt()}(ARS)',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                         fontSize: 18, fontWeight: FontWeight.bold),
@@ -951,17 +983,23 @@ class _ExchangePageState extends State<ExchangePage> {
                   if (_isLoading)
                     const Center(child: CircularProgressIndicator())
                   else
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.send_outlined),
-                      label: const Text('Solicitar Retiro'),
-                      onPressed: () => _submitWithdrawalRequest(userCoins),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            Theme.of(context).colorScheme.secondary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        textStyle: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
+                    Center(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.send_outlined),
+                        label: const Text('Solicitar Retiro'),
+                        onPressed: () => _submitWithdrawalRequest(userCoins),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              Theme.of(context).colorScheme.secondary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 16, horizontal: 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          textStyle: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
                 ],
@@ -974,24 +1012,28 @@ class _ExchangePageState extends State<ExchangePage> {
   }
 
   Widget _buildTextField({
+    required BuildContext context,
     required TextEditingController controller,
     required String label,
     required String hint,
-    IconData? icon,
+    Widget? prefixIconWidget,
     TextInputType? keyboardType,
     Widget? suffixIcon,
   }) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label),
+        Text(label, style: theme.textTheme.bodyLarge),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
           decoration: InputDecoration(
             hintText: hint,
-            prefixIcon: icon != null ? Icon(icon) : null,
+            hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.textTheme.bodyLarge?.color?.withOpacity(0.5)),
+            prefixIcon: prefixIconWidget,
             suffixIcon: suffixIcon,
           ),
         ),
@@ -1003,13 +1045,13 @@ class _ExchangePageState extends State<ExchangePage> {
 class _InfoCard extends StatelessWidget {
   final String title;
   final String value;
-  final IconData icon;
+  final Widget iconWidget;
   final Color color;
 
   const _InfoCard({
     required this.title,
     required this.value,
-    required this.icon,
+    required this.iconWidget,
     required this.color,
   });
 
@@ -1022,20 +1064,22 @@ class _InfoCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(title, style: TextStyle(color: Colors.grey.shade800)),
           const SizedBox(height: 8),
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: Colors.grey.shade800),
+              iconWidget,
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   value,
                   style: const TextStyle(
                       fontWeight: FontWeight.bold, fontSize: 18),
-                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                 ),
               ),
             ],
@@ -1171,8 +1215,9 @@ class SpinHistoryView extends StatelessWidget {
             return Card(
               margin: const EdgeInsets.symmetric(vertical: 4),
               child: ListTile(
+                // ** ÍCONO #4: Historial de Giros **
                 leading:
-                    Icon(Icons.monetization_on, color: Colors.amber.shade800),
+                    Image.asset('assets/monedas.png', width: 40, height: 40),
                 title: Text(data['prize'] ?? 'Premio no disponible'),
                 subtitle: Text(dateString),
               ),
@@ -1265,7 +1310,7 @@ class WithdrawalHistoryView extends StatelessWidget {
 }
 
 // =======================================================================
-// ===== 7. PÁGINA DE LOGIN (CON CAMBIOS DE UI) =====
+// ===== 7. PÁGINA DE LOGIN =====
 // =======================================================================
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -1462,10 +1507,9 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              // ***** WIDGET "RECORDARME" CORREGIDO Y ALINEADO *****
               ListTile(
-                contentPadding: const EdgeInsets.only(left: 4.0), 
-                horizontalTitleGap: 8.0, // Reduce el espacio entre checkbox y texto
+                contentPadding: const EdgeInsets.only(left: 4.0),
+                horizontalTitleGap: 8.0,
                 leading: Checkbox(
                   value: _rememberMe,
                   onChanged: _handleRememberMe,
@@ -1475,7 +1519,7 @@ class _LoginPageState extends State<LoginPage> {
                   "Recordarme al iniciar",
                   style: TextStyle(
                     fontSize: 14,
-                    fontWeight: FontWeight.w500, // Letra un poco más gruesa
+                    fontWeight: FontWeight.w500,
                     color: Theme.of(context)
                         .textTheme
                         .bodyLarge
@@ -1694,8 +1738,9 @@ class _RegisterPageState extends State<RegisterPage> {
       UserCredential userCredential =
           await FirebaseAuth.instance.signInWithCredential(credential);
 
-      final userDoc =
-          FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid);
+      final userDoc = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid);
       final docSnapshot = await userDoc.get();
 
       if (!docSnapshot.exists) {
