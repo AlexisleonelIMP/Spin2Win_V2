@@ -297,12 +297,19 @@ class _MainPageState extends State<MainPage> {
         final userCoins =
             (snapshot.data?.data() as Map<String, dynamic>?)?['coins'] ?? 0;
 
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
         return Scaffold(
           appBar: AppBar(
             title: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.casino_outlined, color: Colors.amber.shade800),
+                Image.asset(
+                  'assets/rueda-de-la-fortuna.png',
+                  width: 32,
+                  height: 32,
+                  color: isDarkMode ? Colors.amber.shade200 : null,
+                ),
                 const SizedBox(width: 8),
                 const Flexible(
                   child: Text(
@@ -321,8 +328,12 @@ class _MainPageState extends State<MainPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Row(
                   children: [
-                    // ** ÍCONO #1: AppBar **
-                    Image.asset('assets/monedas.png', width: 24, height: 24),
+                    Image.asset(
+                      'assets/monedas.png',
+                      width: 24,
+                      height: 24,
+                      color: isDarkMode ? Colors.white : null,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       '$userCoins',
@@ -346,22 +357,33 @@ class _MainPageState extends State<MainPage> {
             child: widgetOptions.elementAt(_selectedIndex),
           ),
           bottomNavigationBar: BottomNavigationBar(
-            items: const <BottomNavigationBarItem>[
+            selectedItemColor: Theme.of(context).colorScheme.secondary,
+            unselectedItemColor:
+                isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
+            items: <BottomNavigationBarItem>[
               BottomNavigationBarItem(
-                icon: Icon(Icons.casino),
+                icon: Image.asset(
+                  'assets/rueda-de-la-fortuna.png',
+                  width: 24,
+                  height: 24,
+                  color: _selectedIndex == 0
+                      ? Theme.of(context).colorScheme.secondary
+                      : (isDarkMode
+                          ? Colors.grey.shade400
+                          : Colors.grey.shade700),
+                ),
                 label: 'Jugar',
               ),
-              BottomNavigationBarItem(
+              const BottomNavigationBarItem(
                 icon: Icon(Icons.swap_horiz),
                 label: 'Canjear',
               ),
-              BottomNavigationBarItem(
+              const BottomNavigationBarItem(
                 icon: Icon(Icons.history),
                 label: 'Historial',
               ),
             ],
             currentIndex: _selectedIndex,
-            selectedItemColor: Theme.of(context).colorScheme.primary,
             onTap: _onItemTapped,
           ),
         );
@@ -691,7 +713,7 @@ class RoulettePainter extends CustomPainter {
 }
 
 // =======================================================================
-// ===== 5. PÁGINA DE CANJEAR =====
+// ===== 5. PÁGINA DE CANJEAR (MODIFICADA) =====
 // =======================================================================
 class ExchangePage extends StatefulWidget {
   const ExchangePage({super.key});
@@ -707,8 +729,9 @@ class _ExchangePageState extends State<ExchangePage> {
   double _amountToReceive = 0.0;
   bool _isLoading = false;
 
+  // ***** CAMBIO: Mínimo de retiro a 100 *****
   final int _exchangeRate = 10;
-  final int _minimumWithdrawal = 10000;
+  final int _minimumWithdrawal = 100;
 
   @override
   void initState() {
@@ -829,6 +852,8 @@ class _ExchangePageState extends State<ExchangePage> {
       return const Center(child: Text("Usuario no encontrado."));
     }
 
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
@@ -879,18 +904,18 @@ class _ExchangePageState extends State<ExchangePage> {
                               return _InfoCard(
                                 title: 'Total Retirado',
                                 value: '...',
-                                iconWidget: const Icon(Icons.history,
-                                    color: Colors.black54),
-                                color: Colors.green.shade100,
+                                color: isDarkMode
+                                    ? const Color(0xFF1E5128)
+                                    : Colors.green.shade100,
                               );
                             }
                             if (withdrawnSnapshot.hasError) {
                               return _InfoCard(
                                 title: 'Total Retirado',
                                 value: 'Error',
-                                iconWidget: const Icon(Icons.error_outline,
-                                    color: Colors.black54),
-                                color: Colors.red.shade100,
+                                color: isDarkMode
+                                    ? const Color(0xFF5D2A2A)
+                                    : Colors.red.shade100,
                               );
                             }
                             final totalWithdrawn =
@@ -898,9 +923,9 @@ class _ExchangePageState extends State<ExchangePage> {
                             return _InfoCard(
                               title: 'Total Retirado',
                               value: '\$${totalWithdrawn.toInt()}',
-                              iconWidget: const Icon(Icons.history,
-                                  color: Colors.black54),
-                              color: Colors.green.shade100,
+                              color: isDarkMode
+                                  ? const Color(0xFF1E5128)
+                                  : Colors.green.shade100,
                             );
                           },
                         ),
@@ -909,11 +934,16 @@ class _ExchangePageState extends State<ExchangePage> {
                       Expanded(
                         child: _InfoCard(
                           title: 'Tu Saldo',
-                          value: '$userCoins', // Cambio para consistencia
-                          // ** ÍCONO #2: Tarjeta "Tu Saldo" **
-                          iconWidget: Image.asset('assets/monedas.png',
-                              width: 24, height: 24),
-                          color: Colors.amber.shade100,
+                          value: '$userCoins',
+                          iconWidget: Image.asset(
+                            'assets/monedas.png',
+                            width: 24,
+                            height: 24,
+                            color: isDarkMode ? Colors.white : null,
+                          ),
+                          color: isDarkMode
+                              ? const Color(0xFF614A19)
+                              : Colors.amber.shade100,
                         ),
                       ),
                     ],
@@ -958,12 +988,16 @@ class _ExchangePageState extends State<ExchangePage> {
                       context: context,
                       controller: _coinsController,
                       label: 'Monedas a Retirar',
-                      hint: 'Min. retiro 10.000',
-                      // ** ÍCONO #3: Campo "Monedas a retirar" **
+                      // ***** CAMBIO: Hint de retiro a 100 *****
+                      hint: 'Min. retiro 100',
                       prefixIconWidget: Padding(
                         padding: const EdgeInsets.all(12.0),
-                        child: Image.asset('assets/monedas.png',
-                            width: 20, height: 20),
+                        child: Image.asset(
+                          'assets/monedas.png',
+                          width: 20,
+                          height: 20,
+                          color: isDarkMode ? Colors.white : null,
+                        ),
                       ),
                       keyboardType: TextInputType.number,
                       suffixIcon: TextButton(
@@ -974,7 +1008,7 @@ class _ExchangePageState extends State<ExchangePage> {
                       )),
                   const SizedBox(height: 24),
                   Text(
-                    'Recibirás: \$${_amountToReceive.toInt()}(ARS)',
+                    'Recibirás: \$ ${_amountToReceive.toInt()} (ARS)',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                         fontSize: 18, fontWeight: FontWeight.bold),
@@ -1042,21 +1076,26 @@ class _ExchangePageState extends State<ExchangePage> {
   }
 }
 
+// ===== WIDGET MODIFICADO PARA NO TENER ÍCONO Y CENTRAR TEXTO =====
 class _InfoCard extends StatelessWidget {
   final String title;
   final String value;
-  final Widget iconWidget;
+  final Widget? iconWidget; // El ícono ahora es opcional
   final Color color;
 
   const _InfoCard({
     required this.title,
     required this.value,
-    required this.iconWidget,
+    this.iconWidget, // Se quita el 'required'
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Determina si el color de fondo es claro u oscuro para elegir el color del texto
+    final bool isColorDark = color.computeLuminance() < 0.5;
+    final Color textColor = isColorDark ? Colors.white : Colors.black87;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1067,19 +1106,29 @@ class _InfoCard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(title, style: TextStyle(color: Colors.grey.shade800)),
+          Text(title,
+              style:
+                  TextStyle(color: textColor.withOpacity(0.8), fontSize: 14)),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              iconWidget,
-              const SizedBox(width: 8),
+              // Muestra el ícono y el espacio solo si el ícono no es nulo
+              if (iconWidget != null)
+                IconTheme(
+                    data: IconThemeData(color: textColor, size: 24),
+                    child: iconWidget!),
+              if (iconWidget != null) const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   value,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 18),
-                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: textColor),
+                  // Se centra el texto horizontalmente si no hay ícono
+                  textAlign:
+                      iconWidget == null ? TextAlign.center : TextAlign.start,
                 ),
               ),
             ],
@@ -1091,7 +1140,7 @@ class _InfoCard extends StatelessWidget {
 }
 
 // =======================================================================
-// ===== 6. PÁGINA DE HISTORIAL =====
+// ===== 6. PÁGINA DE HISTORIAL (CORREGIDA) =====
 // =======================================================================
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -1141,13 +1190,30 @@ class _HistoryPageState extends State<HistoryPage>
                 labelColor: Theme.of(context).colorScheme.secondary,
                 unselectedLabelColor: Colors.grey.shade600,
                 indicatorColor: Theme.of(context).colorScheme.secondary,
+                labelStyle:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                 tabs: const [
                   Tab(
-                      icon: Icon(Icons.casino_outlined),
-                      text: 'Historial de Giros'),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.casino_outlined),
+                        SizedBox(height: 4),
+                        Text('Historial de Giros', textAlign: TextAlign.center),
+                      ],
+                    ),
+                  ),
                   Tab(
-                      icon: Icon(Icons.history_toggle_off),
-                      text: 'Historial de Retiros'),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.history_toggle_off),
+                        SizedBox(height: 4),
+                        Text('Historial de Retiros',
+                            textAlign: TextAlign.center),
+                      ],
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -1177,6 +1243,8 @@ class SpinHistoryView extends StatelessWidget {
     if (user == null) {
       return const Center(child: Text("Inicia sesión para ver tu historial."));
     }
+
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -1215,9 +1283,12 @@ class SpinHistoryView extends StatelessWidget {
             return Card(
               margin: const EdgeInsets.symmetric(vertical: 4),
               child: ListTile(
-                // ** ÍCONO #4: Historial de Giros **
-                leading:
-                    Image.asset('assets/monedas.png', width: 40, height: 40),
+                leading: Image.asset(
+                  'assets/monedas.png',
+                  width: 40,
+                  height: 40,
+                  color: isDarkMode ? Colors.white : null,
+                ),
                 title: Text(data['prize'] ?? 'Premio no disponible'),
                 subtitle: Text(dateString),
               ),
