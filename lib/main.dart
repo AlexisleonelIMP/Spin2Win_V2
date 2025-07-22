@@ -9,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
+// ***** NUEVO: Importamos el paquete de conectividad *****
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 // Asegúrate de tener tu archivo firebase_options.dart
 import 'firebase_options.dart';
@@ -64,10 +66,6 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
 
   runApp(
     ChangeNotifierProvider(
@@ -146,9 +144,163 @@ class Spin2WinApp extends StatelessWidget {
             ),
           ),
           themeMode: themeNotifier.themeMode,
-          home: const AuthWrapper(),
+          home: const LoadingScreen(),
         );
       },
+    );
+  }
+}
+
+// =======================================================================
+// ===== NUEVO WIDGET: PANTALLA DE CARGA CON VERIFICACIÓN DE INTERNET =====
+// =======================================================================
+class LoadingScreen extends StatefulWidget {
+  const LoadingScreen({super.key});
+
+  @override
+  State<LoadingScreen> createState() => _LoadingScreenState();
+}
+
+class _LoadingScreenState extends State<LoadingScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  bool _hasError = false;
+  String _errorMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    );
+    _initializeApp();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  Future<bool> _checkInternetConnectivity() async {
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult.contains(ConnectivityResult.none)) {
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> _initializeApp() async {
+    // Ponemos el estado de vuelta en "cargando" y sin errores
+    setState(() {
+      _hasError = false;
+    });
+    _animationController.repeat();
+
+    // 1. Verificamos la conexión a internet
+    if (await _checkInternetConnectivity() == false) {
+      setState(() {
+        _errorMessage =
+            'No hay conexión a Internet.\nConéctate y vuelve a intentarlo.';
+        _hasError = true;
+        _animationController.stop();
+      });
+      return;
+    }
+
+    // 2. Inicializamos Firebase
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } catch (e) {
+      setState(() {
+        _errorMessage =
+            'Error al conectar con los servicios.\nInténtalo de nuevo más tarde.';
+        _hasError = true;
+        _animationController.stop();
+      });
+      return;
+    }
+
+    // 3. Comprobamos el estado de autenticación (después de una pequeña pausa)
+    await Future.delayed(const Duration(milliseconds: 1500));
+
+    if (mounted) {
+      // Usamos 'first' para obtener solo el primer resultado y evitar problemas de navegación múltiple
+      final user = await FirebaseAuth.instance.authStateChanges().first;
+      if (user == null) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const MainPage()),
+        );
+      }
+    }
+  }
+
+  Widget _buildLoadingIndicator() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        RotationTransition(
+          turns: _animationController,
+          child: Image.asset(
+            'assets/rueda-de-la-fortuna.png',
+            width: 100,
+            height: 100,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.amber.shade200
+                : null,
+          ),
+        ),
+        const SizedBox(height: 24),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 60.0),
+          child: LinearProgressIndicator(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildErrorContent() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Image.asset(
+          'assets/rueda-de-la-fortuna.png',
+          width: 100,
+          height: 100,
+          color: Colors.grey,
+        ),
+        const SizedBox(height: 24),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32.0),
+          child: Text(
+            _errorMessage,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+        ),
+        const SizedBox(height: 24),
+        ElevatedButton.icon(
+          icon: const Icon(Icons.refresh),
+          label: const Text('Reintentar'),
+          onPressed: _initializeApp,
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: _hasError ? _buildErrorContent() : _buildLoadingIndicator(),
+      ),
     );
   }
 }
@@ -195,6 +347,49 @@ class _MainPageState extends State<MainPage> {
       _selectedIndex = index;
     });
   }
+
+  // ***** INICIO: CÓDIGO MODIFICADO PARA DIÁLOGO DE SALIDA *****
+  Future<bool> _onWillPop() async {
+    final shouldPop = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          title: const Text('¿Salir de Spin2Win?'),
+          content: const Text('Se cerrará la aplicación.'),
+          actions: <Widget>[
+            // Botón de "No" a la izquierda
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey.shade600,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('No'),
+              onPressed: () {
+                Navigator.of(context).pop(false); // No cierra la app
+              },
+            ),
+            const Spacer(), // Este widget empuja los botones a los extremos
+            // Botón de "Sí" a la derecha
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade600,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Sí, Salir'),
+              onPressed: () {
+                Navigator.of(context).pop(true); // Sí cierra la app
+              },
+            ),
+          ],
+        );
+      },
+    );
+    return shouldPop ?? false;
+  }
+  // ***** FIN: CÓDIGO MODIFICADO PARA DIÁLOGO DE SALIDA *****
 
   void _showProfileDialog(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -299,92 +494,95 @@ class _MainPageState extends State<MainPage> {
 
         final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-        return Scaffold(
-          appBar: AppBar(
-            title: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.asset(
-                  'assets/rueda-de-la-fortuna.png',
-                  width: 32,
-                  height: 32,
-                  color: isDarkMode ? Colors.amber.shade200 : null,
-                ),
-                const SizedBox(width: 8),
-                const Flexible(
-                  child: Text(
-                    'Spin2Win',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.bold,
-                      fontSize: 22,
+        return WillPopScope(
+          onWillPop: _onWillPop,
+          child: Scaffold(
+            appBar: AppBar(
+              title: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    'assets/rueda-de-la-fortuna.png',
+                    width: 32,
+                    height: 32,
+                    color: isDarkMode ? Colors.amber.shade200 : null,
+                  ),
+                  const SizedBox(width: 8),
+                  const Flexible(
+                    child: Text(
+                      'Spin2Win',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 22,
+                      ),
                     ),
                   ),
+                ],
+              ),
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(
+                    children: [
+                      Image.asset(
+                        'assets/monedas.png',
+                        width: 24,
+                        height: 24,
+                        color: isDarkMode ? Colors.white : null,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '$userCoins',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.account_circle_outlined),
+                  onPressed: () {
+                    _showProfileDialog(context);
+                  },
                 ),
               ],
             ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Row(
-                  children: [
-                    Image.asset(
-                      'assets/monedas.png',
-                      width: 24,
-                      height: 24,
-                      color: isDarkMode ? Colors.white : null,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '$userCoins',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 18,
-                      ),
-                    ),
-                  ],
+            body: Center(
+              child: widgetOptions.elementAt(_selectedIndex),
+            ),
+            bottomNavigationBar: BottomNavigationBar(
+              selectedItemColor: Theme.of(context).colorScheme.secondary,
+              unselectedItemColor:
+                  isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
+              items: <BottomNavigationBarItem>[
+                BottomNavigationBarItem(
+                  icon: Image.asset(
+                    'assets/rueda-de-la-fortuna.png',
+                    width: 24,
+                    height: 24,
+                    color: _selectedIndex == 0
+                        ? Theme.of(context).colorScheme.secondary
+                        : (isDarkMode
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade700),
+                  ),
+                  label: 'Jugar',
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.account_circle_outlined),
-                onPressed: () {
-                  _showProfileDialog(context);
-                },
-              ),
-            ],
-          ),
-          body: Center(
-            child: widgetOptions.elementAt(_selectedIndex),
-          ),
-          bottomNavigationBar: BottomNavigationBar(
-            selectedItemColor: Theme.of(context).colorScheme.secondary,
-            unselectedItemColor:
-                isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
-            items: <BottomNavigationBarItem>[
-              BottomNavigationBarItem(
-                icon: Image.asset(
-                  'assets/rueda-de-la-fortuna.png',
-                  width: 24,
-                  height: 24,
-                  color: _selectedIndex == 0
-                      ? Theme.of(context).colorScheme.secondary
-                      : (isDarkMode
-                          ? Colors.grey.shade400
-                          : Colors.grey.shade700),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.swap_horiz),
+                  label: 'Canjear',
                 ),
-                label: 'Jugar',
-              ),
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.swap_horiz),
-                label: 'Canjear',
-              ),
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.history),
-                label: 'Historial',
-              ),
-            ],
-            currentIndex: _selectedIndex,
-            onTap: _onItemTapped,
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.history),
+                  label: 'Historial',
+                ),
+              ],
+              currentIndex: _selectedIndex,
+              onTap: _onItemTapped,
+            ),
           ),
         );
       },
@@ -825,7 +1023,6 @@ class _ExchangePageState extends State<ExchangePage> {
 
         transaction.update(userRef, {'coins': currentCoins - coinsToWithdraw});
 
-        // ***** NUEVO: Guardar los datos del usuario para futuros retiros *****
         transaction.update(userRef, {
           'withdrawalName': name,
           'withdrawalAlias': alias,
@@ -836,7 +1033,6 @@ class _ExchangePageState extends State<ExchangePage> {
         const SnackBar(
             content: Text('¡Solicitud de retiro enviada con éxito!')),
       );
-      // No limpiamos los controllers de nombre y alias para que se queden guardados
       _coinsController.clear();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -877,7 +1073,6 @@ class _ExchangePageState extends State<ExchangePage> {
         final savedName = userData?['withdrawalName'] as String?;
         final savedAlias = userData?['withdrawalAlias'] as String?;
 
-        // Pre-llenar los campos si están vacíos y hay datos guardados
         if (_nameController.text.isEmpty && savedName != null) {
           _nameController.text = savedName;
         }
@@ -981,6 +1176,8 @@ class _ExchangePageState extends State<ExchangePage> {
                                   : Colors.grey.shade300),
                     ),
                   ),
+
+                  // ***** INICIO: NUEVO CUADRO DE ADVERTENCIA *****
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -1031,6 +1228,8 @@ class _ExchangePageState extends State<ExchangePage> {
                       ],
                     ),
                   ),
+                  // ***** FIN: NUEVO CUADRO DE ADVERTENCIA *****
+
                   const SizedBox(height: 24),
                   _buildTextField(
                     context: context,
