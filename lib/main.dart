@@ -408,10 +408,12 @@ Usuario UID: ${user.uid}
         throw 'Could not launch $emailLaunchUri';
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('No se pudo abrir la aplicación de correo.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('No se pudo abrir la aplicación de correo.')),
+        );
+      }
     }
   }
 
@@ -651,8 +653,6 @@ Usuario UID: ${user.uid}
     );
   }
 }
-// ... (El resto del código como HomePage, FortuneWheel, etc., va aquí)
-// ... Asegúrate de pegar el resto del archivo que ya tenías
 
 // =======================================================================
 // ===== 4. PÁGINA DE JUEGO (RULETA) =====
@@ -1518,6 +1518,12 @@ class _HistoryPageState extends State<HistoryPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    // Le decimos al controlador que nos avise cuando cambia la pestaña para redibujar
+    _tabController.addListener(() {
+      if (mounted) {
+        setState(() {});
+      }
+    });
   }
 
   @override
@@ -1528,6 +1534,8 @@ class _HistoryPageState extends State<HistoryPage>
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Card(
@@ -1562,6 +1570,15 @@ class _HistoryPageState extends State<HistoryPage>
                           'assets/rueda-de-la-fortuna.png',
                           height: 24,
                           width: 24,
+                          // <<--- LÓGICA DE COLOR MEJORADA AQUÍ --->>
+                          color: _tabController.index == 0
+                              ? Theme.of(context)
+                                  .colorScheme
+                                  .secondary // Color cuando está seleccionada
+                              : (isDarkMode
+                                  ? Colors.grey
+                                      .shade400 // Color no seleccionada en modo oscuro
+                                  : null), // Color original no seleccionada en modo claro
                         ),
                         const SizedBox(height: 4),
                         const Text('Historial de Giros',
