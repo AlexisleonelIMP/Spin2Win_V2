@@ -729,7 +729,6 @@ class _ExchangePageState extends State<ExchangePage> {
   double _amountToReceive = 0.0;
   bool _isLoading = false;
 
-  // ***** CAMBIO: Mínimo de retiro a 100 *****
   final int _exchangeRate = 10;
   final int _minimumWithdrawal = 100;
 
@@ -825,14 +824,19 @@ class _ExchangePageState extends State<ExchangePage> {
         });
 
         transaction.update(userRef, {'coins': currentCoins - coinsToWithdraw});
+
+        // ***** NUEVO: Guardar los datos del usuario para futuros retiros *****
+        transaction.update(userRef, {
+          'withdrawalName': name,
+          'withdrawalAlias': alias,
+        });
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('¡Solicitud de retiro enviada con éxito!')),
       );
-      _nameController.clear();
-      _aliasController.clear();
+      // No limpiamos los controllers de nombre y alias para que se queden guardados
       _coinsController.clear();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -864,12 +868,22 @@ class _ExchangePageState extends State<ExchangePage> {
           return Center(
               child: Text("Error al cargar tus datos: ${userSnapshot.error}"));
         }
-        if (!userSnapshot.hasData) {
+        if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final userCoins =
-            (userSnapshot.data!.data() as Map<String, dynamic>?)?['coins'] ?? 0;
+        final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+        final userCoins = userData?['coins'] ?? 0;
+        final savedName = userData?['withdrawalName'] as String?;
+        final savedAlias = userData?['withdrawalAlias'] as String?;
+
+        // Pre-llenar los campos si están vacíos y hay datos guardados
+        if (_nameController.text.isEmpty && savedName != null) {
+          _nameController.text = savedName;
+        }
+        if (_aliasController.text.isEmpty && savedAlias != null) {
+          _aliasController.text = savedAlias;
+        }
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -967,6 +981,56 @@ class _ExchangePageState extends State<ExchangePage> {
                                   : Colors.grey.shade300),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                        color: isDarkMode
+                            ? Colors.amber.withOpacity(0.2)
+                            : Colors.amber.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDarkMode
+                              ? Colors.amber.shade700
+                              : Colors.amber.shade400,
+                          width: 1,
+                        )),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: isDarkMode
+                              ? Colors.amber.shade200
+                              : Colors.amber.shade800,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text.rich(TextSpan(
+                              style: TextStyle(
+                                color: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.color,
+                              ),
+                              children: const [
+                                TextSpan(
+                                    text: 'Importante: ',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold)),
+                                TextSpan(
+                                    text:
+                                        'Revisamos cada solicitud manualmente para garantizar la seguridad. El pago se procesará en un plazo de '),
+                                TextSpan(
+                                    text: '24 a 48 horas hábiles.',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold)),
+                              ])),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 24),
                   _buildTextField(
                     context: context,
@@ -988,7 +1052,6 @@ class _ExchangePageState extends State<ExchangePage> {
                       context: context,
                       controller: _coinsController,
                       label: 'Monedas a Retirar',
-                      // ***** CAMBIO: Hint de retiro a 100 *****
                       hint: 'Min. retiro 100',
                       prefixIconWidget: Padding(
                         padding: const EdgeInsets.all(12.0),
