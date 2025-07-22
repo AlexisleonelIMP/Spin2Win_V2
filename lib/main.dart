@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart'; // Importación para el soporte por email
 import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
-// ***** NUEVO: Importamos el paquete de conectividad *****
-import 'package:connectivity_plus/connectivity_plus.dart';
 
 // Asegúrate de tener tu archivo firebase_options.dart
 import 'firebase_options.dart';
@@ -67,6 +67,7 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
+  // La inicialización de Firebase ahora se hará en la pantalla de carga
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeNotifier(),
@@ -152,7 +153,7 @@ class Spin2WinApp extends StatelessWidget {
 }
 
 // =======================================================================
-// ===== NUEVO WIDGET: PANTALLA DE CARGA CON VERIFICACIÓN DE INTERNET =====
+// ===== PANTALLA DE CARGA CON VERIFICACIÓN DE INTERNET =====
 // =======================================================================
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
@@ -192,13 +193,11 @@ class _LoadingScreenState extends State<LoadingScreen>
   }
 
   Future<void> _initializeApp() async {
-    // Ponemos el estado de vuelta en "cargando" y sin errores
     setState(() {
       _hasError = false;
     });
     _animationController.repeat();
 
-    // 1. Verificamos la conexión a internet
     if (await _checkInternetConnectivity() == false) {
       setState(() {
         _errorMessage =
@@ -209,7 +208,6 @@ class _LoadingScreenState extends State<LoadingScreen>
       return;
     }
 
-    // 2. Inicializamos Firebase
     try {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
@@ -224,21 +222,12 @@ class _LoadingScreenState extends State<LoadingScreen>
       return;
     }
 
-    // 3. Comprobamos el estado de autenticación (después de una pequeña pausa)
     await Future.delayed(const Duration(milliseconds: 1500));
 
     if (mounted) {
-      // Usamos 'first' para obtener solo el primer resultado y evitar problemas de navegación múltiple
-      final user = await FirebaseAuth.instance.authStateChanges().first;
-      if (user == null) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const LoginPage()),
-        );
-      } else {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const MainPage()),
-        );
-      }
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const AuthWrapper()),
+      );
     }
   }
 
@@ -306,7 +295,7 @@ class _LoadingScreenState extends State<LoadingScreen>
 }
 
 // =======================================================================
-// ===== 2. MANEJO DE AUTENTICACIÓN (LOGIN/LOGOUT) =====
+// ===== MANEJO DE AUTENTICACIÓN (LOGIN/LOGOUT) =====
 // =======================================================================
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
@@ -330,7 +319,7 @@ class AuthWrapper extends StatelessWidget {
 }
 
 // =======================================================================
-// ===== 3. PÁGINA PRINCIPAL (CONTENEDOR DE JUEGO, CANJE, HISTORIAL) =====
+// ===== PÁGINA PRINCIPAL (CONTENEDOR DE JUEGO, CANJE, HISTORIAL) =====
 // =======================================================================
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -348,7 +337,6 @@ class _MainPageState extends State<MainPage> {
     });
   }
 
-  // ***** INICIO: CÓDIGO MODIFICADO PARA DIÁLOGO DE SALIDA *****
   Future<bool> _onWillPop() async {
     final shouldPop = await showDialog<bool>(
       context: context,
@@ -360,7 +348,6 @@ class _MainPageState extends State<MainPage> {
           title: const Text('¿Salir de Spin2Win?'),
           content: const Text('Se cerrará la aplicación.'),
           actions: <Widget>[
-            // Botón de "No" a la izquierda
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.grey.shade600,
@@ -368,11 +355,10 @@ class _MainPageState extends State<MainPage> {
               ),
               child: const Text('No'),
               onPressed: () {
-                Navigator.of(context).pop(false); // No cierra la app
+                Navigator.of(context).pop(false);
               },
             ),
-            const Spacer(), // Este widget empuja los botones a los extremos
-            // Botón de "Sí" a la derecha
+            const Spacer(),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red.shade600,
@@ -380,7 +366,7 @@ class _MainPageState extends State<MainPage> {
               ),
               child: const Text('Sí, Salir'),
               onPressed: () {
-                Navigator.of(context).pop(true); // Sí cierra la app
+                Navigator.of(context).pop(true);
               },
             ),
           ],
@@ -389,7 +375,45 @@ class _MainPageState extends State<MainPage> {
     );
     return shouldPop ?? false;
   }
-  // ***** FIN: CÓDIGO MODIFICADO PARA DIÁLOGO DE SALIDA *****
+
+  // Función para abrir el cliente de email para soporte
+  Future<void> _launchEmailSupport() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final String emailTo = 'soporte.spin2win@gmail.com';
+    final String subject = 'Soporte Spin2Win - Usuario: ${user.email}';
+    final String body = '''
+¡Hola! Necesito ayuda con lo siguiente:
+
+[Describe aquí tu problema o consulta]
+
+---
+*Por favor, no borres la siguiente información:*
+Usuario Email: ${user.email}
+Usuario UID: ${user.uid}
+''';
+
+    final Uri emailLaunchUri = Uri(
+      scheme: 'mailto',
+      path: emailTo,
+      query:
+          'subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}',
+    );
+
+    try {
+      if (await canLaunchUrl(emailLaunchUri)) {
+        await launchUrl(emailLaunchUri);
+      } else {
+        throw 'Could not launch $emailLaunchUri';
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('No se pudo abrir la aplicación de correo.')),
+      );
+    }
+  }
 
   void _showProfileDialog(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -399,6 +423,9 @@ class _MainPageState extends State<MainPage> {
       context: context,
       builder: (BuildContext context) {
         return SimpleDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
           title: const Text('Perfil y Opciones'),
           children: <Widget>[
             Padding(
@@ -430,15 +457,33 @@ class _MainPageState extends State<MainPage> {
                 );
               },
             ),
+            const Divider(),
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.of(context)
+                    .pop(); // Cierra el diálogo antes de abrir el email
+                _launchEmailSupport();
+              },
+              child: const Row(
+                children: [
+                  Icon(Icons.support_agent, size: 22),
+                  SizedBox(width: 16),
+                  Text('Soporte Técnico'),
+                ],
+              ),
+            ),
+            const Divider(),
             SimpleDialogOption(
               onPressed: () async {
                 Navigator.of(context).pop();
                 await GoogleSignIn().signOut();
                 await FirebaseAuth.instance.signOut();
               },
-              child: const Text(
-                'Cerrar Sesión',
-                style: TextStyle(color: Colors.red),
+              child: const Center(
+                child: Text(
+                  'Cerrar Sesión',
+                  style: TextStyle(color: Colors.red),
+                ),
               ),
             ),
           ],
@@ -455,10 +500,10 @@ class _MainPageState extends State<MainPage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    const List<Widget> widgetOptions = [
-      HomePage(),
-      ExchangePage(),
-      HistoryPage(),
+    final List<Widget> widgetOptions = [
+      const HomePage(),
+      const ExchangePage(),
+      const HistoryPage(),
     ];
 
     return StreamBuilder<DocumentSnapshot>(
@@ -542,12 +587,29 @@ class _MainPageState extends State<MainPage> {
                     ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.account_circle_outlined),
-                  onPressed: () {
-                    _showProfileDialog(context);
-                  },
+                SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Container(
+                    margin: const EdgeInsets.all(4.0),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      iconSize: 22,
+                      icon: const Icon(Icons.account_circle_outlined),
+                      onPressed: () {
+                        _showProfileDialog(context);
+                      },
+                    ),
+                  ),
                 ),
+                const SizedBox(width: 8),
               ],
             ),
             body: Center(
@@ -589,6 +651,8 @@ class _MainPageState extends State<MainPage> {
     );
   }
 }
+// ... (El resto del código como HomePage, FortuneWheel, etc., va aquí)
+// ... Asegúrate de pegar el resto del archivo que ya tenías
 
 // =======================================================================
 // ===== 4. PÁGINA DE JUEGO (RULETA) =====
@@ -1176,8 +1240,6 @@ class _ExchangePageState extends State<ExchangePage> {
                                   : Colors.grey.shade300),
                     ),
                   ),
-
-                  // ***** INICIO: NUEVO CUADRO DE ADVERTENCIA *****
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -1228,8 +1290,6 @@ class _ExchangePageState extends State<ExchangePage> {
                       ],
                     ),
                   ),
-                  // ***** FIN: NUEVO CUADRO DE ADVERTENCIA *****
-
                   const SizedBox(height: 24),
                   _buildTextField(
                     context: context,
@@ -1245,6 +1305,45 @@ class _ExchangePageState extends State<ExchangePage> {
                     label: 'Alias o CBU/CVU',
                     hint: 'Para la transferencia',
                     prefixIconWidget: const Icon(Icons.vpn_key_outlined),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.content_paste),
+                      onPressed: () async {
+                        final clipboardData =
+                            await Clipboard.getData(Clipboard.kTextPlain);
+                        if (clipboardData?.text != null) {
+                          _aliasController.text = clipboardData!.text!;
+                          _aliasController.selection =
+                              TextSelection.fromPosition(TextPosition(
+                                  offset: _aliasController.text.length));
+
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Row(
+                                  children: [
+                                    Icon(Icons.check_circle_outline,
+                                        color: Colors.white),
+                                    SizedBox(width: 8),
+                                    Text('¡Listo! Texto pegado.'),
+                                  ],
+                                ),
+                                backgroundColor: Colors.green.shade600,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                margin: const EdgeInsets.only(
+                                  right: 20,
+                                  left: 20,
+                                  bottom: 20,
+                                ),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    ),
                   ),
                   const SizedBox(height: 16),
                   _buildTextField(
@@ -1454,18 +1553,23 @@ class _HistoryPageState extends State<HistoryPage>
                 indicatorColor: Theme.of(context).colorScheme.secondary,
                 labelStyle:
                     const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                tabs: const [
+                tabs: [
                   Tab(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.casino_outlined),
-                        SizedBox(height: 4),
-                        Text('Historial de Giros', textAlign: TextAlign.center),
+                        Image.asset(
+                          'assets/rueda-de-la-fortuna.png',
+                          height: 24,
+                          width: 24,
+                        ),
+                        const SizedBox(height: 4),
+                        const Text('Historial de Giros',
+                            textAlign: TextAlign.center),
                       ],
                     ),
                   ),
-                  Tab(
+                  const Tab(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -1547,8 +1651,8 @@ class SpinHistoryView extends StatelessWidget {
               child: ListTile(
                 leading: Image.asset(
                   'assets/monedas.png',
-                  width: 40,
-                  height: 40,
+                  width: 24,
+                  height: 24,
                   color: isDarkMode ? Colors.white : null,
                 ),
                 title: Text(data['prize'] ?? 'Premio no disponible'),
