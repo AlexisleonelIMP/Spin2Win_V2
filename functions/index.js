@@ -1,7 +1,8 @@
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
 const {logger} = require("firebase-functions/v2");
-const functions = require("firebase-functions");
 const {setGlobalOptions} = require("firebase-functions/v2");
+// ***** CAMBIO: Importamos el método moderno para secretos *****
+const {defineString} = require("firebase-functions/params");
 
 const admin = require("firebase-admin");
 const SibApiV3Sdk = require("sib-api-v3-sdk");
@@ -10,6 +11,9 @@ const SibApiV3Sdk = require("sib-api-v3-sdk");
 setGlobalOptions({region: "southamerica-east1"});
 
 admin.initializeApp();
+
+// ***** CAMBIO: Definimos la API Key como un parámetro secreto *****
+const brevoApiKey = defineString("BREVO_API_KEY");
 
 /**
  * Se activa cada vez que se crea un nuevo documento
@@ -20,19 +24,20 @@ exports.newWithdrawalRequest = onDocumentCreated(
     async (event) => {
       logger.info("Función newWithdrawalRequest activada.");
 
-      // Obtenemos la API Key y configuramos Brevo AHORA, dentro de la función
-      const BREVO_API_KEY = functions.config().brevo.key;
+      // ***** CAMBIO: Leemos el valor del parámetro secreto *****
+      const apiKeyString = brevoApiKey.value();
 
-      if (!BREVO_API_KEY) {
+      if (!apiKeyString) {
         logger.error(
-            "API Key de Brevo no encontrada. La función no puede continuar.",
+            "API Key de Brevo no fue encontrada en los parámetros.",
         );
         return;
       }
 
+      // Configuramos Brevo con la clave obtenida
       const defaultClient = SibApiV3Sdk.ApiClient.instance;
       const apiKey = defaultClient.authentications["api-key"];
-      apiKey.apiKey = BREVO_API_KEY;
+      apiKey.apiKey = apiKeyString;
       const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
 
       const snapshot = event.data;
@@ -63,7 +68,7 @@ exports.newWithdrawalRequest = onDocumentCreated(
         `;
       sendSmtpEmail.sender = {
         "name": "Alertas Spin2Win",
-        "email": "notificaciones@spin2win.app", // Email verificado en Brevo
+        "email": "dordottinfo@gmail.com",
       };
       sendSmtpEmail.to = [{"email": "dordottinfo@gmail.com"}];
 
