@@ -7,12 +7,13 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart'; // Importación para el soporte por email
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 
-// Asegúrate de tener tu archivo firebase_options.dart
+// Importaciones de tu proyecto
+import 'models/prize_item.dart';
 import 'firebase_options.dart';
 
 // =======================================================================
@@ -67,7 +68,6 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  // La inicialización de Firebase ahora se hará en la pantalla de carga
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeNotifier(),
@@ -86,15 +86,6 @@ class ThemeNotifier extends ChangeNotifier {
         _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
     notifyListeners();
   }
-}
-
-// --- Modelo para los Premios ---
-class PrizeItem {
-  final String label;
-  final int value;
-  final Color color;
-
-  PrizeItem({required this.label, required this.value, required this.color});
 }
 
 // =======================================================================
@@ -376,7 +367,6 @@ class _MainPageState extends State<MainPage> {
     return shouldPop ?? false;
   }
 
-  // Función para abrir el cliente de email para soporte
   Future<void> _launchEmailSupport() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -462,8 +452,7 @@ Usuario UID: ${user.uid}
             const Divider(),
             SimpleDialogOption(
               onPressed: () {
-                Navigator.of(context)
-                    .pop(); // Cierra el diálogo antes de abrir el email
+                Navigator.of(context).pop();
                 _launchEmailSupport();
               },
               child: const Row(
@@ -1570,15 +1559,9 @@ class _HistoryPageState extends State<HistoryPage>
                           'assets/rueda-de-la-fortuna.png',
                           height: 24,
                           width: 24,
-                          // <<--- LÓGICA DE COLOR MEJORADA AQUÍ --->>
                           color: _tabController.index == 0
-                              ? Theme.of(context)
-                                  .colorScheme
-                                  .secondary // Color cuando está seleccionada
-                              : (isDarkMode
-                                  ? Colors.grey
-                                      .shade400 // Color no seleccionada en modo oscuro
-                                  : null), // Color original no seleccionada en modo claro
+                              ? Theme.of(context).colorScheme.secondary
+                              : (isDarkMode ? Colors.grey.shade400 : null),
                         ),
                         const SizedBox(height: 4),
                         const Text('Historial de Giros',
