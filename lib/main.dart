@@ -10,7 +10,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
 import 'dart:math';
-import 'dart:ui';
 
 // Importaciones de tu proyecto
 import 'models/prize_item.dart';
@@ -371,7 +370,7 @@ class _MainPageState extends State<MainPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final String emailTo = 'soporte.spin2win@gmail.com';
+    const String emailTo = 'soporte.spin2win@gmail.com';
     final String subject = 'Soporte Spin2Win - Usuario: ${user.email}';
     final String body = '''
 ¡Hola! Necesito ayuda con lo siguiente:
@@ -772,8 +771,7 @@ class FortuneWheel extends StatefulWidget {
   final List<PrizeItem> items;
   final Function(PrizeItem) onSpinEnd;
 
-  const FortuneWheel({required this.items, required this.onSpinEnd, Key? key})
-      : super(key: key);
+  const FortuneWheel({required this.items, required this.onSpinEnd, super.key});
 
   @override
   FortuneWheelState createState() => FortuneWheelState();

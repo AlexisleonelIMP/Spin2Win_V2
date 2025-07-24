@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "965937832679-p59ro92jfj8h6j87i1ks7f0u6qg0r7m6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.spin2win_v2",
+            "certificate_hash": "0f25369f390a736d3d886ed743518513689daabf"
+          }
+        },
+        {
           "client_id": "965937832679-1strqk04m4oljfkasj388rjsk99a5k5t.apps.googleusercontent.com",
           "client_type": 3
         }
