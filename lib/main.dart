@@ -12,53 +12,11 @@ import 'dart:async';
 import 'dart:math';
 
 // Importaciones de tu proyecto
-import 'models/prize_item.dart';
+import 'core/models/prize_item.dart'; // RUTA CORREGIDA
+import 'core/theme/app_theme.dart'; // TEMA IMPORTADO
 import 'firebase_options.dart';
 
-// =======================================================================
-// ===== DEFINICIÓN DE TEMAS (EXTRAÍDO PARA REUTILIZAR) =====
-// =======================================================================
-final ThemeData lightTheme = ThemeData(
-  brightness: Brightness.light,
-  primarySwatch: Colors.amber,
-  fontFamily: 'Poppins',
-  scaffoldBackgroundColor: const Color(0xFFFDFBF3),
-  textTheme: const TextTheme(
-    bodyLarge: TextStyle(fontWeight: FontWeight.normal, fontSize: 16),
-    bodyMedium: TextStyle(fontWeight: FontWeight.normal, fontSize: 14),
-  ),
-  colorScheme: ColorScheme.fromSwatch(
-    primarySwatch: Colors.amber,
-    brightness: Brightness.light,
-  ).copyWith(
-    secondary: const Color(0xFFF9693B),
-    surface: const Color(0xFFFFFFFF),
-    onSurface: Colors.black87,
-  ),
-  appBarTheme: const AppBarTheme(
-    backgroundColor: Color(0xFFFFF8E1),
-    elevation: 1,
-    titleTextStyle: TextStyle(
-      fontFamily: 'Poppins',
-      color: Colors.black87,
-      fontSize: 20,
-      fontWeight: FontWeight.w600,
-    ),
-    iconTheme: IconThemeData(color: Colors.black87),
-  ),
-  inputDecorationTheme: const InputDecorationTheme(
-    border: UnderlineInputBorder(),
-    focusedBorder: UnderlineInputBorder(
-      borderSide: BorderSide(color: Colors.amber),
-    ),
-  ),
-  textButtonTheme: TextButtonThemeData(
-    style: TextButton.styleFrom(
-      foregroundColor: const Color(0xFFF9693B),
-    ),
-  ),
-);
-
+// La función main ahora es lo único que queda al principio
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -69,22 +27,10 @@ void main() async {
 
   runApp(
     ChangeNotifierProvider(
-      create: (_) => ThemeNotifier(),
+      create: (_) => ThemeNotifier(), // Esta clase ahora viene de app_theme.dart
       child: const Spin2WinApp(),
     ),
   );
-}
-
-// --- CONTROLADOR DEL TEMA (MODO OSCURO/CLARO) ---
-class ThemeNotifier extends ChangeNotifier {
-  ThemeMode _themeMode = ThemeMode.light;
-  ThemeMode get themeMode => _themeMode;
-
-  void toggleTheme() {
-    _themeMode =
-        _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-    notifyListeners();
-  }
 }
 
 // =======================================================================
@@ -100,40 +46,9 @@ class Spin2WinApp extends StatelessWidget {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Spin2Win',
+          // AHORA SOLO USAMOS LAS VARIABLES IMPORTADAS
           theme: lightTheme,
-          darkTheme: ThemeData(
-            brightness: Brightness.dark,
-            primarySwatch: Colors.amber,
-            fontFamily: 'Poppins',
-            scaffoldBackgroundColor: const Color(0xFF121212),
-            textTheme: const TextTheme(
-              bodyLarge: TextStyle(fontWeight: FontWeight.normal, fontSize: 16),
-              bodyMedium:
-                  TextStyle(fontWeight: FontWeight.normal, fontSize: 14),
-            ),
-            colorScheme: ColorScheme.fromSwatch(
-              primarySwatch: Colors.amber,
-              brightness: Brightness.dark,
-            ).copyWith(
-              secondary: const Color(0xFFF9693B),
-              surface: const Color(0xFF1E1E1E),
-            ),
-            appBarTheme: const AppBarTheme(
-              backgroundColor: Color(0xFF1E1E1E),
-            ),
-            inputDecorationTheme: InputDecorationTheme(
-              border: const UnderlineInputBorder(),
-              focusedBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.amber.shade400),
-              ),
-              labelStyle: TextStyle(color: Colors.grey.shade400),
-            ),
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.amber.shade400,
-              ),
-            ),
-          ),
+          darkTheme: darkTheme,
           themeMode: themeNotifier.themeMode,
           home: const LoadingScreen(),
         );
@@ -191,7 +106,7 @@ class _LoadingScreenState extends State<LoadingScreen>
     if (await _checkInternetConnectivity() == false) {
       setState(() {
         _errorMessage =
-            'No hay conexión a Internet.\nConéctate y vuelve a intentarlo.';
+        'No hay conexión a Internet.\nConéctate y vuelve a intentarlo.';
         _hasError = true;
         _animationController.stop();
       });
@@ -205,7 +120,7 @@ class _LoadingScreenState extends State<LoadingScreen>
     } catch (e) {
       setState(() {
         _errorMessage =
-            'Error al conectar con los servicios.\nInténtalo de nuevo más tarde.';
+        'Error al conectar con los servicios.\nInténtalo de nuevo más tarde.';
         _hasError = true;
         _animationController.stop();
       });
@@ -387,7 +302,7 @@ Usuario UID: ${user.uid}
       scheme: 'mailto',
       path: emailTo,
       query:
-          'subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}',
+      'subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}',
     );
 
     try {
@@ -608,7 +523,7 @@ Usuario UID: ${user.uid}
             bottomNavigationBar: BottomNavigationBar(
               selectedItemColor: Theme.of(context).colorScheme.secondary,
               unselectedItemColor:
-                  isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
+              isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
               items: <BottomNavigationBarItem>[
                 BottomNavigationBarItem(
                   icon: Image.asset(
@@ -618,8 +533,8 @@ Usuario UID: ${user.uid}
                     color: _selectedIndex == 0
                         ? Theme.of(context).colorScheme.secondary
                         : (isDarkMode
-                            ? Colors.grey.shade400
-                            : Colors.grey.shade700),
+                        ? Colors.grey.shade400
+                        : Colors.grey.shade700),
                   ),
                   label: 'Jugar',
                 ),
@@ -681,7 +596,7 @@ class _HomePageState extends State<HomePage> {
     if (user == null) return;
 
     final userRef =
-        FirebaseFirestore.instance.collection('users').doc(user.uid);
+    FirebaseFirestore.instance.collection('users').doc(user.uid);
     final historyRef = userRef.collection('rouletteHistory').doc();
 
     await FirebaseFirestore.instance.runTransaction((transaction) async {
@@ -746,18 +661,18 @@ class _HomePageState extends State<HomePage> {
               onPressed: _isSpinning
                   ? null
                   : () {
-                      setState(() {
-                        _isSpinning = true;
-                      });
-                      _wheelKey.currentState?.spin();
-                    },
+                setState(() {
+                  _isSpinning = true;
+                });
+                _wheelKey.currentState?.spin();
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.secondary,
                 foregroundColor: Colors.white,
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                 textStyle:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -1033,7 +948,7 @@ class _ExchangePageState extends State<ExchangePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content:
-                Text('El retiro mínimo es de $_minimumWithdrawal monedas.')),
+            Text('El retiro mínimo es de $_minimumWithdrawal monedas.')),
       );
       return;
     }
@@ -1050,9 +965,9 @@ class _ExchangePageState extends State<ExchangePage> {
 
     try {
       final userRef =
-          FirebaseFirestore.instance.collection('users').doc(user.uid);
+      FirebaseFirestore.instance.collection('users').doc(user.uid);
       final withdrawalRef =
-          FirebaseFirestore.instance.collection('withdrawal_requests').doc();
+      FirebaseFirestore.instance.collection('withdrawal_requests').doc();
 
       await FirebaseFirestore.instance.runTransaction((transaction) async {
         final userSnapshot = await transaction.get(userRef);
@@ -1137,7 +1052,7 @@ class _ExchangePageState extends State<ExchangePage> {
             elevation: 4,
             color: Theme.of(context).colorScheme.surface,
             shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
@@ -1222,9 +1137,9 @@ class _ExchangePageState extends State<ExchangePage> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                           color:
-                              Theme.of(context).brightness == Brightness.light
-                                  ? Colors.grey.shade700
-                                  : Colors.grey.shade300),
+                          Theme.of(context).brightness == Brightness.light
+                              ? Colors.grey.shade700
+                              : Colors.grey.shade300),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -1264,14 +1179,14 @@ class _ExchangePageState extends State<ExchangePage> {
                                 TextSpan(
                                     text: 'Importante: ',
                                     style:
-                                        TextStyle(fontWeight: FontWeight.bold)),
+                                    TextStyle(fontWeight: FontWeight.bold)),
                                 TextSpan(
                                     text:
-                                        'Revisamos cada solicitud manualmente para garantizar la seguridad. El pago se procesará en un plazo de '),
+                                    'Revisamos cada solicitud manualmente para garantizar la seguridad. El pago se procesará en un plazo de '),
                                 TextSpan(
                                     text: '24 a 48 horas hábiles.',
                                     style:
-                                        TextStyle(fontWeight: FontWeight.bold)),
+                                    TextStyle(fontWeight: FontWeight.bold)),
                               ])),
                         ),
                       ],
@@ -1296,7 +1211,7 @@ class _ExchangePageState extends State<ExchangePage> {
                       icon: const Icon(Icons.content_paste),
                       onPressed: () async {
                         final clipboardData =
-                            await Clipboard.getData(Clipboard.kTextPlain);
+                        await Clipboard.getData(Clipboard.kTextPlain);
                         if (clipboardData?.text != null) {
                           _aliasController.text = clipboardData!.text!;
                           _aliasController.selection =
@@ -1372,7 +1287,7 @@ class _ExchangePageState extends State<ExchangePage> {
                         onPressed: () => _submitWithdrawalRequest(userCoins),
                         style: ElevatedButton.styleFrom(
                           backgroundColor:
-                              Theme.of(context).colorScheme.secondary,
+                          Theme.of(context).colorScheme.secondary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(
                               vertical: 16, horizontal: 50),
@@ -1456,7 +1371,7 @@ class _InfoCard extends StatelessWidget {
         children: [
           Text(title,
               style:
-                  TextStyle(color: textColor.withOpacity(0.8), fontSize: 14)),
+              TextStyle(color: textColor.withOpacity(0.8), fontSize: 14)),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1476,7 +1391,7 @@ class _InfoCard extends StatelessWidget {
                       color: textColor),
                   // Se centra el texto horizontalmente si no hay ícono
                   textAlign:
-                      iconWidget == null ? TextAlign.center : TextAlign.start,
+                  iconWidget == null ? TextAlign.center : TextAlign.start,
                 ),
               ),
             ],
@@ -1547,7 +1462,7 @@ class _HistoryPageState extends State<HistoryPage>
                 unselectedLabelColor: Colors.grey.shade600,
                 indicatorColor: Theme.of(context).colorScheme.secondary,
                 labelStyle:
-                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                 tabs: [
                   Tab(
                     child: Column(
@@ -1837,7 +1752,7 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
       final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      await googleUser.authentication;
       final OAuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -1969,7 +1884,7 @@ class _LoginPageState extends State<LoginPage> {
                 onPressed: _isLoading ? null : _signInWithEmail,
                 style: ElevatedButton.styleFrom(
                   padding:
-                      const EdgeInsets.symmetric(vertical: 16, horizontal: 80),
+                  const EdgeInsets.symmetric(vertical: 16, horizontal: 80),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(50),
                   ),
@@ -1985,11 +1900,11 @@ class _LoginPageState extends State<LoginPage> {
                 label: const Text('Ingresar con Google'),
                 style: ElevatedButton.styleFrom(
                   padding:
-                      const EdgeInsets.symmetric(vertical: 16, horizontal: 30),
+                  const EdgeInsets.symmetric(vertical: 16, horizontal: 30),
                   backgroundColor:
-                      Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white
-                          : null,
+                  Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : null,
                   foregroundColor: Colors.black87,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(50),
@@ -2124,7 +2039,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
     try {
       UserCredential userCredential =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
@@ -2164,14 +2079,14 @@ class _RegisterPageState extends State<RegisterPage> {
         return;
       }
       final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      await googleUser.authentication;
       final OAuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
       UserCredential userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
+      await FirebaseAuth.instance.signInWithCredential(credential);
 
       final userDoc = FirebaseFirestore.instance
           .collection('users')
@@ -2282,7 +2197,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 onPressed: _isLoading ? null : _registerUser,
                 style: ElevatedButton.styleFrom(
                   padding:
-                      const EdgeInsets.symmetric(vertical: 16, horizontal: 80),
+                  const EdgeInsets.symmetric(vertical: 16, horizontal: 80),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(50),
                   ),
@@ -2298,11 +2213,11 @@ class _RegisterPageState extends State<RegisterPage> {
                 label: const Text('Registrarse con Google'),
                 style: ElevatedButton.styleFrom(
                   padding:
-                      const EdgeInsets.symmetric(vertical: 16, horizontal: 30),
+                  const EdgeInsets.symmetric(vertical: 16, horizontal: 30),
                   backgroundColor:
-                      Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white
-                          : null,
+                  Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : null,
                   foregroundColor: Colors.black87,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(50),
