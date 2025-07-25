@@ -4,7 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'dart:async';
 
 import '../../../firebase_options.dart';
-import '../../../main.dart';
+import '../../auth/screens/auth_wrapper.dart';
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
