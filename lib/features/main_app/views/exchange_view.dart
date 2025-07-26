@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+
+import '../../../core/providers/user_notifier.dart';
 import '../../../shared/widgets/info_card.dart';
 import '../../../shared/widgets/custom_text_field.dart';
 
@@ -59,7 +62,97 @@ class _ExchangePageState extends State<ExchangePage> {
   }
 
   Future<void> _submitWithdrawalRequest(int currentUserCoins) async {
-    // ... (la lógica de esta función no cambia) ...
+    final coinsToWithdraw = int.tryParse(_coinsController.text) ?? 0;
+    final name = _nameController.text.trim();
+    final alias = _aliasController.text.trim();
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (name.isEmpty || alias.isEmpty || coinsToWithdraw <= 0) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, completa todos los campos.')),
+      );
+      return;
+    }
+    if (coinsToWithdraw < _minimumWithdrawal) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content:
+            Text('El retiro mínimo es de $_minimumWithdrawal monedas.')),
+      );
+      return;
+    }
+    if (coinsToWithdraw > currentUserCoins) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('No tienes suficientes monedas para este retiro.')),
+      );
+      return;
+    }
+    if (user == null) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final userRef =
+      FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final withdrawalRef =
+      FirebaseFirestore.instance.collection('withdrawal_requests').doc();
+
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final userSnapshot = await transaction.get(userRef);
+        final currentCoins = (userSnapshot.data()?['coins'] ?? 0) as int;
+
+        if (currentCoins < coinsToWithdraw) {
+          throw Exception('Saldo insuficiente.');
+        }
+
+        final newCoinTotal = currentCoins - coinsToWithdraw;
+
+        transaction.set(withdrawalRef, {
+          'userId': user.uid,
+          'userName': name,
+          'userAlias': alias,
+          'coinsToWithdraw': coinsToWithdraw,
+          'amountInPesos': _amountToReceive,
+          'status': 'pending',
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+
+        transaction.update(userRef, {'coins': newCoinTotal});
+
+        transaction.update(userRef, {
+          'withdrawalName': name,
+          'withdrawalAlias': alias,
+        });
+
+        // **LÍNEA CLAVE AÑADIDA AQUÍ**
+        // Actualizamos el estado local inmediatamente después de la transacción
+        if (mounted) {
+          Provider.of<UserNotifier>(context, listen: false).updateCoins(newCoinTotal);
+        }
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('¡Solicitud de retiro enviada con éxito!')),
+        );
+      }
+      _coinsController.clear();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al enviar la solicitud: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -176,13 +269,11 @@ class _ExchangePageState extends State<ExchangePage> {
                     ],
                   ),
                   const SizedBox(height: 16),
-
-                  // ----- WIDGET MODIFICADO AQUÍ -----
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: isDarkMode
-                          ? Colors.blue.withOpacity(0.2) // Usamos otro color para diferenciarlo
+                          ? Colors.blue.withOpacity(0.2)
                           : Colors.blue.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
@@ -193,10 +284,10 @@ class _ExchangePageState extends State<ExchangePage> {
                       ),
                     ),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.swap_horiz_rounded, // Ícono más representativo
+                          Icons.swap_horiz_rounded,
                           color: isDarkMode
                               ? Colors.blue.shade200
                               : Colors.blue.shade800,
@@ -216,11 +307,14 @@ class _ExchangePageState extends State<ExchangePage> {
                                 const TextSpan(text: 'Tasa de Cambio: '),
                                 TextSpan(
                                     text: '$_exchangeRate Monedas = \$1\n',
-                                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold)),
                                 const TextSpan(text: 'Mínimo de retiro: '),
                                 TextSpan(
-                                    text: '$_minimumWithdrawal monedas (\$${(_minimumWithdrawal / _exchangeRate).toStringAsFixed(0)})',
-                                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    text:
+                                    '$_minimumWithdrawal monedas (\$${(_minimumWithdrawal / _exchangeRate).toStringAsFixed(0)})',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold)),
                               ],
                             ),
                           ),
@@ -228,8 +322,6 @@ class _ExchangePageState extends State<ExchangePage> {
                       ],
                     ),
                   ),
-                  // ----- FIN DEL WIDGET MODIFICADO -----
-
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -309,7 +401,34 @@ class _ExchangePageState extends State<ExchangePage> {
                     suffixIcon: IconButton(
                       icon: const Icon(Icons.content_paste),
                       onPressed: () async {
-                        // ... (lógica del botón de pegar no cambia) ...
+                        final clipboardData =
+                        await Clipboard.getData(Clipboard.kTextPlain);
+
+                        if (clipboardData != null && clipboardData.text != null && mounted) {
+                          _aliasController.text = clipboardData.text!;
+                          _aliasController.selection =
+                              TextSelection.fromPosition(TextPosition(
+                                  offset: _aliasController.text.length));
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Row(children: [
+                                Icon(Icons.check_circle_outline,
+                                    color: Colors.white),
+                                SizedBox(width: 8),
+                                Text('¡Listo! Texto pegado.'),
+                              ]),
+                              backgroundColor: Colors.green.shade600,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              margin: const EdgeInsets.only(
+                                  right: 20, left: 20, bottom: 20),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        }
                       },
                     ),
                   ),
