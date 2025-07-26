@@ -14,6 +14,7 @@ dependencies:
   firebase_core: ^2.32.0
   firebase_auth: ^4.20.0
   cloud_firestore: ^4.17.4
+  cloud_functions: ^4.7.5
   google_sign_in: ^6.2.1
   connectivity_plus: ^6.0.3
   url_launcher: ^6.2.6
@@ -23,6 +24,7 @@ dependencies:
 
   # Icons
   cupertino_icons: ^1.0.8
+  font_awesome_flutter: ^10.7.0
 
 dev_dependencies:
   flutter_test:

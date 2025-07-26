@@ -5,9 +5,9 @@ import '../../../core/models/prize_item.dart';
 
 class FortuneWheel extends StatefulWidget {
   final List<PrizeItem> items;
-  final Function(PrizeItem) onSpinEnd;
+  final Function(PrizeItem)? onSpinEnd;
 
-  const FortuneWheel({required this.items, required this.onSpinEnd, super.key});
+  const FortuneWheel({super.key, required this.items, this.onSpinEnd});
 
   @override
   FortuneWheelState createState() => FortuneWheelState();
@@ -25,39 +25,36 @@ class FortuneWheelState extends State<FortuneWheel>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 6),
+      duration: const Duration(seconds: 5),
     );
 
-    _animation = Tween<double>(begin: 0, end: 0).animate(
-        CurvedAnimation(parent: _controller, curve: Curves.decelerate));
+    _animation = Tween<double>(begin: 0, end: 0)
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.decelerate));
   }
 
-  void spin() {
-    if (_controller.isAnimating) return;
+  // MÉTODO CON LA FÓRMULA SIMPLIFICADA Y FINAL
+  Future<void> spinTo(int prizeIndex) {
+    if (_controller.isAnimating) return Future.value();
 
     final double anglePerItem = 2 * pi / widget.items.length;
-    final double randomAngle = _random.nextDouble() * 2 * pi;
+    // 1. Calculamos el ángulo final donde debe detenerse la ruleta.
+    //    El puntero está arriba (en -pi/2), y el centro del primer premio (índice 0) también.
+    //    Por lo tanto, para llegar al premio 'prizeIndex', necesitamos rotar esa cantidad de "porciones".
+    final double targetAngle = - (prizeIndex * anglePerItem);
 
-    final int randomFullSpins = 5 + _random.nextInt(5);
-    final double endAngle =
-        _currentAngle - (randomFullSpins * 2 * pi) - randomAngle;
+    // 2. Añadimos un número fijo de rotaciones completas para el efecto visual.
+    final double fullSpins = 5 * (2 * pi);
 
-    _animation = Tween<double>(begin: _currentAngle, end: endAngle).animate(
-        CurvedAnimation(parent: _controller, curve: Curves.easeOutQuart));
+    // 3. El ángulo final de la animación es la posición actual, menos los giros completos,
+    //    menos el ángulo necesario para llegar al objetivo.
+    final double endAngle = _currentAngle - fullSpins - ( (_currentAngle % (2 * pi)) - targetAngle );
 
-    _controller.forward(from: 0.0).whenComplete(() {
-      _currentAngle = endAngle;
+    _animation = Tween<double>(begin: _currentAngle, end: endAngle)
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutQuart));
 
-      double effectiveAngle = (-_currentAngle + (anglePerItem / 2));
-      double normalizedAngle = effectiveAngle % (2 * pi);
-      if (normalizedAngle < 0) {
-        normalizedAngle += 2 * pi;
-      }
+    _currentAngle = endAngle;
 
-      final int finalIndex = (normalizedAngle / anglePerItem).floor();
-
-      widget.onSpinEnd(widget.items[finalIndex]);
-    });
+    return _controller.forward(from: 0.0);
   }
 
   @override
@@ -90,9 +87,11 @@ class FortuneWheelState extends State<FortuneWheel>
   }
 }
 
+// --- EL RESTO DEL ARCHIVO (RoulettePointer, _PointerPainter, RoulettePainter) ---
+// --- NO NECESITA CAMBIOS Y SE MANTIENE IGUAL ---
+
 class RoulettePointer extends StatelessWidget {
   const RoulettePointer({super.key});
-
   @override
   Widget build(BuildContext context) {
     return CustomPaint(

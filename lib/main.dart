@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'features/splash/screens/loading_screen.dart';
 import 'firebase_options.dart';
+import 'core/providers/user_notifier.dart';
 
 void main() async {
   // Asegura que los bindings de Flutter estén inicializados.
@@ -24,8 +25,11 @@ void main() async {
 
   // Ejecuta la aplicación.
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => ThemeNotifier(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeNotifier()),
+        ChangeNotifierProvider(create: (_) => UserNotifier()),
+      ],
       child: const Spin2WinApp(),
     ),
   );

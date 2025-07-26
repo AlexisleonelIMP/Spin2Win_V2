@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:provider/provider.dart'; // <-- IMPORT QUE FALTABA
 
 import '../../../core/models/prize_item.dart';
+import '../../../core/providers/user_notifier.dart'; // <-- IMPORT QUE FALTABA
 import '../widgets/fortune_wheel.dart';
 
 class HomePage extends StatefulWidget {
@@ -27,50 +30,57 @@ class _HomePageState extends State<HomePage> {
     PrizeItem(label: 'Nada', value: 0, color: Colors.grey.shade600),
   ];
 
-  Future<void> _updateUserCoins(PrizeItem prize) async {
-    if (prize.value == 0) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('¡Mejor suerte la próxima vez!')),
-        );
-      }
-      return;
-    }
+  Future<void> _spinAndGetPrize() async {
+    if (_isSpinning) return;
 
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final userRef =
-    FirebaseFirestore.instance.collection('users').doc(user.uid);
-    final historyRef = userRef.collection('rouletteHistory').doc();
-
-    await FirebaseFirestore.instance.runTransaction((transaction) async {
-      final snapshot = await transaction.get(userRef);
-      final currentCoins = (snapshot.data()?['coins'] ?? 0) as int;
-      final newCoins = currentCoins + prize.value;
-
-      transaction.set(userRef, {'coins': newCoins}, SetOptions(merge: true));
-      transaction.set(historyRef, {
-        'prize': prize.label,
-        'coins': prize.value,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+    setState(() {
+      _isSpinning = true;
     });
 
-    if (mounted) {
-      final prizeText = '${prize.value} monedas';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('¡Ganaste $prizeText!')),
-      );
-    }
-  }
+    String message = 'Ocurrió un error inesperado.';
 
-  void _onSpinEnd(PrizeItem prize) async {
-    await _updateUserCoins(prize);
-    if (mounted) {
-      setState(() {
-        _isSpinning = false;
-      });
+    try {
+      final callable = FirebaseFunctions.instanceFor(region: "us-central1")
+          .httpsCallable('spinTheWheel');
+      final result = await callable.call();
+
+      final prizeData = result.data['prize'];
+      final String prizeLabel = prizeData['label'];
+      final int prizeValue = prizeData['value'];
+
+      final int prizeIndex = _prizes.indexWhere((p) => p.label == prizeLabel);
+
+      if (prizeIndex != -1) {
+        await _wheelKey.currentState?.spinTo(prizeIndex);
+
+        message = prizeValue > 0
+            ? '¡Ganaste $prizeValue monedas!'
+            : '¡Mejor suerte la próxima vez!';
+      } else {
+        message = 'Error: Premio no encontrado.';
+      }
+
+    } on FirebaseFunctionsException catch (error) {
+      message = 'Error: ${error.message}';
+    } catch (error) {
+      message = 'Ocurrió un error inesperado.';
+    } finally {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+          final updatedCoins = (userDoc.data()?['coins'] ?? 0) as int;
+          Provider.of<UserNotifier>(context, listen: false).updateCoins(updatedCoins);
+        }
+
+        setState(() {
+          _isSpinning = false;
+        });
+      }
     }
   }
 
@@ -96,21 +106,13 @@ class _HomePageState extends State<HomePage> {
               child: FortuneWheel(
                 key: _wheelKey,
                 items: _prizes,
-                onSpinEnd: _onSpinEnd,
               ),
             ),
             const SizedBox(height: 40),
             ElevatedButton.icon(
               icon: const Icon(Icons.play_circle_fill),
               label: const Text('GIRAR LA RULETA'),
-              onPressed: _isSpinning
-                  ? null
-                  : () {
-                setState(() {
-                  _isSpinning = true;
-                });
-                _wheelKey.currentState?.spin();
-              },
+              onPressed: _isSpinning ? null : _spinAndGetPrize,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.secondary,
                 foregroundColor: Colors.white,
