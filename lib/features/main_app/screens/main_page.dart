@@ -6,8 +6,9 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart'; // Para el ThemeNotifier
-import '../../../main.dart'; // Temporal para ExchangePage y HistoryPage
+import '../views/history_view.dart';
 import '../views/home_view.dart';
+import '../views/exchange_view.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
