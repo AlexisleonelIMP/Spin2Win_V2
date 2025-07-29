@@ -24,7 +24,6 @@ class _MainPageState extends State<MainPage> {
   @override
   void initState() {
     super.initState();
-    // Obtenemos los datos del usuario UNA SOLA VEZ al cargar la página
     _fetchInitialUserData();
   }
 
@@ -36,17 +35,14 @@ class _MainPageState extends State<MainPage> {
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
       if (userDoc.exists) {
         final userCoins = (userDoc.data()?['coins'] ?? 0) as int;
-        // Usamos el Provider para guardar las monedas iniciales en el estado local
         if (mounted) {
           Provider.of<UserNotifier>(context, listen: false).setInitialCoins(userCoins);
         }
       }
     } catch (e) {
-      // Manejar error si no se pueden cargar los datos iniciales
       print("Error fetching initial user data: $e");
     }
   }
-
 
   void _onItemTapped(int index) {
     setState(() {
@@ -65,20 +61,11 @@ class _MainPageState extends State<MainPage> {
           title: const Text('¿Salir de Spin2Win?'),
           content: const Text('Se cerrará la aplicación.'),
           actions: <Widget>[
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey.shade600,
-                foregroundColor: Colors.white,
-              ),
+            TextButton(
               child: const Text('No'),
               onPressed: () => Navigator.of(context).pop(false),
             ),
-            const Spacer(),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.shade600,
-                foregroundColor: Colors.white,
-              ),
+            TextButton(
               child: const Text('Sí, Salir'),
               onPressed: () => Navigator.of(context).pop(true),
             ),
@@ -90,17 +77,127 @@ class _MainPageState extends State<MainPage> {
   }
 
   Future<void> _launchEmailSupport() async {
-    // ... (este método no cambia) ...
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    const String emailTo = 'soporte.spin2win@gmail.com';
+    final String subject = 'Soporte Spin2Win - Usuario: ${user.email}';
+    final String body = '''
+¡Hola! Necesito ayuda con lo siguiente:
+
+[Describe aquí tu problema o consulta]
+
+---
+*Por favor, no borres la siguiente información:*
+Usuario Email: ${user.email}
+Usuario UID: ${user.uid}
+''';
+
+    final Uri emailLaunchUri = Uri(
+      scheme: 'mailto',
+      path: emailTo,
+      query:
+      'subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}',
+    );
+
+    try {
+      if (await canLaunchUrl(emailLaunchUri)) {
+        await launchUrl(emailLaunchUri);
+      } else {
+        throw 'Could not launch $emailLaunchUri';
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('No se pudo abrir la aplicación de correo.')),
+        );
+      }
+    }
   }
 
-  void _showProfileDialog(BuildContext context) {
-    // ... (este método no cambia) ...
+  // ===== FUNCIÓN MODIFICADA AQUÍ =====
+  void _showProfileDialog(BuildContext context, ThemeNotifier themeNotifier) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return SimpleDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          title: const Text('Perfil y Opciones'),
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Sesión iniciada como:',
+                    style: Theme.of(dialogContext).textTheme.bodySmall,
+                  ),
+                  Text(
+                    user?.email ?? 'No disponible',
+                    style: Theme.of(dialogContext).textTheme.titleSmall,
+                  ),
+                ],
+              ),
+            ),
+            const Divider(),
+            // Usamos un Consumer aquí para que solo el switch se reconstruya
+            Consumer<ThemeNotifier>(
+              builder: (context, notifier, child) {
+                return SwitchListTile(
+                  title: const Text('Modo Oscuro'),
+                  value: notifier.themeMode == ThemeMode.dark,
+                  onChanged: (bool value) {
+                    notifier.toggleTheme();
+                  },
+                );
+              },
+            ),
+            const Divider(),
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                _launchEmailSupport();
+              },
+              child: const Row(
+                children: [
+                  Icon(Icons.support_agent, size: 22),
+                  SizedBox(width: 16),
+                  Text('Soporte Técnico'),
+                ],
+              ),
+            ),
+            const Divider(),
+            SimpleDialogOption(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                await GoogleSignIn().signOut();
+                await FirebaseAuth.instance.signOut();
+              },
+              child: const Center(
+                child: Text(
+                  'Cerrar Sesión',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // AHORA LEEMOS LAS MONEDAS DESDE NUESTRO NOTIFIER LOCAL
-    final userCoins = Provider.of<UserNotifier>(context).coins;
+    // Obtenemos los notifiers aquí para pasarlos a donde se necesiten
+    final userNotifier = Provider.of<UserNotifier>(context);
+    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
+
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     final List<Widget> widgetOptions = [
@@ -148,7 +245,7 @@ class _MainPageState extends State<MainPage> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '$userCoins', // Este valor ahora viene del Provider
+                    '${userNotifier.coins}', // Leemos las monedas del notifier
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 18,
@@ -169,12 +266,14 @@ class _MainPageState extends State<MainPage> {
                       .withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
+                // ===== LLAMADA AL MÉTODO MODIFICADA AQUÍ =====
                 child: IconButton(
                   padding: EdgeInsets.zero,
                   iconSize: 22,
                   icon: const Icon(Icons.account_circle_outlined),
                   onPressed: () {
-                    _showProfileDialog(context);
+                    // Le pasamos el themeNotifier a la función
+                    _showProfileDialog(context, themeNotifier);
                   },
                 ),
               ),
