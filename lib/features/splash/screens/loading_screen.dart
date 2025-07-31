@@ -3,8 +3,10 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:package_info_plus/package_info_plus.dart'; // Importación ya existente
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/services.dart'; // <-- ¡NUEVA IMPORTACIÓN!
 
 import '../../../firebase_options.dart';
 import '../../auth/screens/auth_wrapper.dart';
@@ -24,13 +26,14 @@ class _LoadingScreenState extends State<LoadingScreen>
   bool _hasError = false;
   String _errorMessage = '';
   String _loadingMessage = 'Preparando tu experiencia...';
-  String _appVersion = ''; // <-- ¡NUEVA VARIABLE PARA LA VERSIÓN!
+  String _appVersion = '';
 
   final List<String> _loadingMessages = [
     'Verificando conexión a Internet...',
     'Conectando con nuestros servicios...',
     'Cargando configuraciones...',
     'Verificando versión de la app...',
+    'Solicitando permisos necesarios...',
     'Todo listo para Spin2Win...',
   ];
   int _currentMessageIndex = 0;
@@ -79,7 +82,7 @@ class _LoadingScreenState extends State<LoadingScreen>
     try {
       final PackageInfo packageInfo = await PackageInfo.fromPlatform();
       final String currentVersion = packageInfo.version;
-      setState(() { // <-- Actualizar el estado con la versión
+      setState(() {
         _appVersion = 'v$currentVersion';
       });
 
@@ -144,8 +147,6 @@ class _LoadingScreenState extends State<LoadingScreen>
             TextButton(
               child: const Text('Actualizar Ahora'),
               onPressed: () {
-                // Abre el enlace a tu aplicación en la Play Store
-                // Asegúrate de reemplazar 'com.example.spin2win_v2' con el ID de tu app real
                 launchUrl(Uri.parse('market://details?id=com.example.spin2win_v2'), mode: LaunchMode.externalApplication);
               },
             ),
@@ -153,6 +154,28 @@ class _LoadingScreenState extends State<LoadingScreen>
         );
       },
     );
+  }
+
+  Future<bool> _checkAndRequestPermissions() async {
+    PermissionStatus notificationStatus = await Permission.notification.status;
+
+    if (notificationStatus.isDenied || notificationStatus.isPermanentlyDenied) {
+      notificationStatus = await Permission.notification.request();
+    }
+
+    if (notificationStatus.isGranted) {
+      print('Permiso de notificaciones concedido.');
+      return true;
+    } else {
+      _messageTimer?.cancel();
+      setState(() {
+        _errorMessage =
+        'Permiso de notificaciones denegado.\nAlgunas funciones pueden no estar disponibles.';
+        _hasError = true;
+        _animationController.stop();
+      });
+      return false;
+    }
   }
 
   Future<void> _initializeApp() async {
@@ -196,13 +219,16 @@ class _LoadingScreenState extends State<LoadingScreen>
       return;
     }
 
-    // Aquí iría la lógica para MANEJO DE PERMISOS
-    // Lo agregaremos en el siguiente paso.
+    bool hasRequiredPermissions = await _checkAndRequestPermissions();
+    if (!hasRequiredPermissions) {
+      return;
+    }
 
     await Future.delayed(const Duration(milliseconds: 2500));
 
     if (mounted) {
       _messageTimer?.cancel();
+      // Antes de navegar, aplicamos un fade-out suave.
       await _animationController.forward(from: 0.0).then((_) => _animationController.stop());
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
@@ -281,23 +307,33 @@ class _LoadingScreenState extends State<LoadingScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Definir el estilo de la barra de estado y navegación aquí
+    // Se usa SystemChrome.setSystemUIOverlayStyle para que los íconos de la barra de estado y navegación sean claros
+    // sobre el fondo oscuro de la pantalla de carga.
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+      statusBarIconBrightness: Brightness.light, // Para iconos de la barra de estado (hora, batería, Wi-Fi)
+      statusBarBrightness: Brightness.dark,      // Para iOS (texto de la barra de estado en modo oscuro)
+      systemNavigationBarIconBrightness: Brightness.light, // Para iconos de la barra de navegación (atrás, inicio, recientes)
+      systemNavigationBarColor: darkTheme.scaffoldBackgroundColor, // Para el color de fondo de la barra de navegación
+    ));
+
     return Theme(
       data: darkTheme,
       child: Scaffold(
         backgroundColor: darkTheme.scaffoldBackgroundColor,
-        body: Stack( // Usamos Stack para posicionar la versión
+        body: Stack(
           children: [
             Center(
               child: _hasError ? _buildErrorContent() : _buildLoadingIndicator(),
             ),
-            if (_appVersion.isNotEmpty) // Muestra la versión solo si ya se obtuvo
+            if (_appVersion.isNotEmpty)
               Positioned(
-                bottom: 20, // Distancia desde abajo
-                left: 20,  // Distancia desde la izquierda (o right: 20 para la derecha)
+                bottom: 20,
+                left: 20,
                 child: Text(
                   _appVersion,
                   style: TextStyle(
-                    color: Colors.amber.shade100, // Color que contraste bien
+                    color: Colors.amber.shade100,
                     fontSize: 12,
                     fontWeight: FontWeight.w300,
                   ),

@@ -4,13 +4,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/providers/user_notifier.dart';
-import '../../../core/theme/app_theme.dart'; // Necesario para lightTheme/darkTheme
+import '../../../core/theme/app_theme.dart';
 import '../views/exchange_view.dart';
 import '../views/history_view.dart';
 import '../views/home_view.dart';
-import '../../../core/providers/theme_notifier.dart'; // <-- ¡IMPORTACIÓN NECESARIA!
+import '../../../core/providers/theme_notifier.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -82,17 +83,34 @@ class _MainPageState extends State<MainPage> {
     if (user == null) return;
 
     const String emailTo = 'soporte.spin2win@gmail.com';
-    final String subject = 'Soporte Spin2Win - Usuario: ${user.email}';
-    final String body = '''
-¡Hola! Necesito ayuda con lo siguiente:
+    final String subject = 'Soporte Spin2Win - Consulta de Usuario: ${user.email}'; // Asunto más específico
 
-[Describe aquí tu problema o consulta]
+    // ===== ¡NUEVO CUERPO DEL MENSAJE DE CORREO! =====
+    final String body = '''
+¡Hola, equipo de Spin2Win!
+
+Escribo para solicitar soporte con el siguiente asunto:
 
 ---
-*Por favor, no borres la siguiente información:*
-Usuario Email: ${user.email}
-Usuario UID: ${user.uid}
+**[Por favor, describe tu problema o consulta aquí con el mayor detalle posible.]**
+**(Incluye capturas de pantalla si crees que pueden ayudar.)**
+---
+
+Gracias de antemano por tu ayuda.
+
+Saludos,
+
+[Tu Nombre Opcional]
+
+
+---
+**INFORMACIÓN TÉCNICA (NO EDITAR NI BORRAR):**
+ID de Sesión: ${user.uid}
+Correo de Usuario: ${user.email}
+Versión de la App: ${await _getAppVersionForEmail() ?? 'Desconocida'}
+---------------------------------------------------
 ''';
+    // =================================================
 
     final Uri emailLaunchUri = Uri(
       scheme: 'mailto',
@@ -114,6 +132,18 @@ Usuario UID: ${user.uid}
               content: Text('No se pudo abrir la aplicación de correo.')),
         );
       }
+    }
+  }
+
+  // ***** NUEVA FUNCIÓN: Obtener la versión para el email *****
+  // Necesaria para añadir la versión al cuerpo del correo de soporte
+  Future<String?> _getAppVersionForEmail() async {
+    try {
+      final PackageInfo packageInfo = await PackageInfo.fromPlatform();
+      return packageInfo.version;
+    } catch (e) {
+      print('Error al obtener la versión de la app para el email: $e');
+      return null;
     }
   }
 
