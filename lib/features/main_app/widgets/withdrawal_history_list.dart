@@ -14,8 +14,11 @@ class WithdrawalHistoryView extends StatelessWidget {
 
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
+      // ***** CAMBIO CRÍTICO AQUÍ: Apunta a la subcolección del usuario *****
+          .collection('users')
+          .doc(user.uid)
           .collection('withdrawal_requests')
-          .where('userId', isEqualTo: user.uid)
+      // *****************************
           .orderBy('timestamp', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
@@ -23,6 +26,7 @@ class WithdrawalHistoryView extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
+          // El error aquí debería cambiar o desaparecer
           return Center(child: Text("Error: ${snapshot.error}"));
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {

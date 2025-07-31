@@ -5,7 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class ExchangeNotifier extends ChangeNotifier {
   final _nameController = TextEditingController();
   final _aliasController = TextEditingController();
-  final _coinsController = TextEditingController();
+  final _coinsController = TextEditingController(); // <<-- CORREGIDO AQUÍ
 
   double _amountToReceive = 0.0;
   bool _isLoading = false;
@@ -83,17 +83,28 @@ class ExchangeNotifier extends ChangeNotifier {
         final userSnapshot = await transaction.get(userRef);
         final currentCoins = (userSnapshot.data()?['coins'] ?? 0) as int;
 
+        if (!userSnapshot.exists) {
+          throw Exception('Usuario no existe en Firestore.');
+        }
+
         if (currentCoins < coinsToWithdraw) {
           throw Exception('Saldo insuficiente.');
         }
 
         newCoinTotal = currentCoins - coinsToWithdraw;
 
-        final withdrawalRef = FirebaseFirestore.instance.collection('withdrawal_requests').doc();
+        // ***** CAMBIO CRÍTICO AQUÍ: Apunta a la subcolección del usuario *****
+        final withdrawalRef = userRef.collection('withdrawal_requests').doc();
+        // *******************************************************************
+
         transaction.set(withdrawalRef, {
-          'userId': user.uid, 'userName': name, 'userAlias': alias,
-          'coinsToWithdraw': coinsToWithdraw, 'amountInPesos': _amountToReceive,
-          'status': 'pending', 'timestamp': FieldValue.serverTimestamp(),
+          'userId': user.uid,
+          'userName': name,
+          'userAlias': alias,
+          'coinsToWithdraw': coinsToWithdraw,
+          'amountInPesos': _amountToReceive,
+          'status': 'pending',
+          'timestamp': FieldValue.serverTimestamp(),
         });
 
         transaction.update(userRef, {'coins': newCoinTotal});
