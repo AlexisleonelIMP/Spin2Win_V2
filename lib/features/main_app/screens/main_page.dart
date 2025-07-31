@@ -6,10 +6,11 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/providers/user_notifier.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme.dart'; // Necesario para lightTheme/darkTheme
 import '../views/exchange_view.dart';
 import '../views/history_view.dart';
 import '../views/home_view.dart';
+import '../../../core/providers/theme_notifier.dart'; // <-- ¡IMPORTACIÓN NECESARIA!
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -116,9 +117,10 @@ Usuario UID: ${user.uid}
     }
   }
 
-  // ===== FUNCIÓN MODIFICADA AQUÍ =====
-  void _showProfileDialog(BuildContext context, ThemeNotifier themeNotifier) {
+  // Ahora ThemeNotifier está disponible a través de Provider
+  void _showProfileDialog(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+    // final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false); // No es necesario pasar como parámetro, se obtiene en el builder del Consumer
 
     showDialog(
       context: context,
@@ -146,19 +148,20 @@ Usuario UID: ${user.uid}
               ),
             ),
             const Divider(),
-            // Usamos un Consumer aquí para que solo el switch se reconstruya
-            Consumer<ThemeNotifier>(
+            // Reintroducimos el SwitchListTile y su Consumer para el ThemeNotifier
+            Consumer<ThemeNotifier>( // <--- ¡BLOQUE REINTRODUCIDO!
               builder: (context, notifier, child) {
                 return SwitchListTile(
                   title: const Text('Modo Oscuro'),
                   value: notifier.themeMode == ThemeMode.dark,
                   onChanged: (bool value) {
-                    notifier.toggleTheme();
+                    notifier.toggleTheme(); // Llamada al método del notifier
                   },
                 );
               },
             ),
-            const Divider(),
+            const Divider(), // Asegúrate de que este divisor esté donde lo quieras
+
             SimpleDialogOption(
               onPressed: () {
                 Navigator.of(dialogContext).pop();
@@ -194,9 +197,9 @@ Usuario UID: ${user.uid}
 
   @override
   Widget build(BuildContext context) {
-    // Obtenemos los notifiers aquí para pasarlos a donde se necesiten
     final userNotifier = Provider.of<UserNotifier>(context);
-    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
+    // Ya no necesitamos esta línea aquí si el themeNotifier se obtiene en el Consumer del diálogo
+    // final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
 
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
@@ -245,7 +248,7 @@ Usuario UID: ${user.uid}
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '${userNotifier.coins}', // Leemos las monedas del notifier
+                    '${userNotifier.coins}',
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 18,
@@ -266,14 +269,13 @@ Usuario UID: ${user.uid}
                       .withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                // ===== LLAMADA AL MÉTODO MODIFICADA AQUÍ =====
                 child: IconButton(
                   padding: EdgeInsets.zero,
                   iconSize: 22,
                   icon: const Icon(Icons.account_circle_outlined),
                   onPressed: () {
-                    // Le pasamos el themeNotifier a la función
-                    _showProfileDialog(context, themeNotifier);
+                    // La llamada al diálogo ahora es más simple
+                    _showProfileDialog(context);
                   },
                 ),
               ),

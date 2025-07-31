@@ -1,17 +1,5 @@
 import 'package:flutter/material.dart';
 
-// --- CONTROLADOR DEL TEMA (MODO OSCURO/CLARO) ---
-class ThemeNotifier extends ChangeNotifier {
-  ThemeMode _themeMode = ThemeMode.light;
-  ThemeMode get themeMode => _themeMode;
-
-  void toggleTheme() {
-    _themeMode =
-    _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-    notifyListeners();
-  }
-}
-
 // --- DEFINICIÓN DEL TEMA CLARO ---
 final ThemeData lightTheme = ThemeData(
   brightness: Brightness.light,

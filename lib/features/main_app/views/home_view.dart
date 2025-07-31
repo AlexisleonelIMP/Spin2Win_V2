@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:provider/provider.dart'; // <-- IMPORT QUE FALTABA
+import 'package:provider/provider.dart';
+import 'package:firebase_analytics/firebase_analytics.dart'; // <-- ¡NUEVA IMPORTACIÓN!
 
 import '../../../core/models/prize_item.dart';
-import '../../../core/providers/user_notifier.dart'; // <-- IMPORT QUE FALTABA
+import '../../../core/providers/user_notifier.dart';
 import '../widgets/fortune_wheel.dart';
 
 class HomePage extends StatefulWidget {
@@ -18,6 +19,9 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final GlobalKey<FortuneWheelState> _wheelKey = GlobalKey();
   bool _isSpinning = false;
+
+  // Obtén la instancia de FirebaseAnalytics
+  final FirebaseAnalytics analytics = FirebaseAnalytics.instance; // <-- ¡NUEVA LÍNEA!
 
   final List<PrizeItem> _prizes = [
     PrizeItem(label: '10 Monedas', value: 10, color: Colors.blue.shade400),
@@ -56,6 +60,18 @@ class _HomePageState extends State<HomePage> {
         message = prizeValue > 0
             ? '¡Ganaste $prizeValue monedas!'
             : '¡Mejor suerte la próxima vez!';
+
+        // ***** ¡REGISTRO DEL EVENTO DE ANALYTICS AQUÍ! *****
+        await analytics.logEvent(
+          name: 'spin_completed', // Nombre del evento
+          parameters: {
+            'prize_label': prizeLabel, // Etiqueta del premio (ej. "10 Monedas")
+            'coins_won': prizeValue,   // Valor de las monedas ganadas
+            'user_id': FirebaseAuth.instance.currentUser?.uid, // UID del usuario
+          },
+        );
+        // ****************************************************
+
       } else {
         message = 'Error: Premio no encontrado.';
       }
